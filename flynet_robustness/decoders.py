@@ -1,0 +1,73 @@
+"""Task decoders: hit/miss classifier (MLP) and position/velocity regressors."""
+
+import pickle
+
+import torch
+from torch import nn
+
+_FLYNET_SUFFIX = {"flynet_synthesized": "_synthesized_model",
+                  "flynet_no_connectome": "no_connectome", "flynet": ""}
+
+
+class TorchMLP(nn.Module):
+    """Frozen torch port of a scikit-learn StandardScaler + MLPClassifier pipeline."""
+
+    def __init__(self, sklearn_pipeline):
+        super().__init__()
+        scaler = sklearn_pipeline.named_steps["scaler"]
+        mlp = sklearn_pipeline.named_steps["clf"]
+        self.register_buffer("mean", torch.tensor(scaler.mean_, dtype=torch.float32))
+        self.register_buffer("scale", torch.tensor(scaler.scale_, dtype=torch.float32))
+        (W1, W2), (b1, b2) = mlp.coefs_, mlp.intercepts_
+        self.fc1 = nn.Linear(W1.shape[0], W1.shape[1])
+        self.fc2 = nn.Linear(W2.shape[0], W2.shape[1])
+        self.fc1.weight.data = torch.tensor(W1.T, dtype=torch.float32)
+        self.fc1.bias.data = torch.tensor(b1, dtype=torch.float32)
+        self.fc2.weight.data = torch.tensor(W2.T, dtype=torch.float32)
+        self.fc2.bias.data = torch.tensor(b2, dtype=torch.float32)
+        for p in self.parameters():
+            p.requires_grad = False
+
+    def forward(self, x):
+        x = (x - self.mean) / self.scale
+        return self.fc2(torch.tanh(self.fc1(x)))
+
+
+class PositionDecoder(nn.Module):
+    """MLP regressor for 3D object position or velocity."""
+
+    def __init__(self, input_dim, hidden_dims=(128, 16), output_dim=3):
+        super().__init__()
+        layers, last = [], input_dim
+        for h in hidden_dims:
+            layers += [nn.Linear(last, h), nn.ReLU()]
+            last = h
+        layers.append(nn.Linear(last, output_dim))
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+
+def load_decoder(cnn=False, cnn_id="flynet_synthesized"):
+    """Load the hit/miss classifier as a frozen TorchMLP."""
+    suffix = "_cnn_" + cnn_id if cnn else _FLYNET_SUFFIX.get(cnn_id, "")
+    path = f"mlp_models{suffix}/model_hit{suffix}.pkl"
+    with open(path, "rb") as f:
+        pipeline = pickle.load(f)
+    return TorchMLP(pipeline)
+
+
+def load_decoder_pos_vel(load_velocity=True, input_dim=5768, device="cuda"):
+    """Load a position or velocity regressor."""
+    label = "velocity" if load_velocity else "position"
+    path = f"{label}_decoders/{label}_decoder_flynet_synthesized.pth"
+    model = PositionDecoder(input_dim=input_dim, hidden_dims=(128, 16), output_dim=3)
+    model.load_state_dict(torch.load(path))
+    return model.to(device).eval()
+
+
+def to_logits(p, eps=1e-4):
+    """Inverse sigmoid of a probability/texture in (0,1)."""
+    p = p.clamp(eps, 1.0 - eps)
+    return torch.log(p / (1.0 - p))

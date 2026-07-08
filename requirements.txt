@@ -1,0 +1,18 @@
+# Core scientific stack
+numpy
+scipy
+scikit-learn
+pandas
+matplotlib
+seaborn
+imageio
+tqdm
+
+# Deep learning (install a build matching your CUDA/CPU setup)
+torch
+torchvision
+
+# Environment-specific, install separately (see README):
+#   pytorch3d   -> differentiable 3D rendering   https://github.com/facebookresearch/pytorch3d
+#   flyvis      -> FlyNet / CTRNN                 https://github.com/TuragaLab/flyvis
+#   RAFT        -> optical-flow baseline (repo checkout on PYTHONPATH)

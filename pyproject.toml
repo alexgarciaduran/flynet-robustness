@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flynet-robustness"
+version = "0.1.0"
+description = "Robustness and efficiency benchmark for a connectome-constrained fly visual system model on a collision-detection task."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "seaborn",
+    "imageio",
+    "tqdm",
+    "pandas",
+]
+
+[project.optional-dependencies]
+# torch / torchvision, pytorch3d and flyvis are environment-specific; see README.
+full = ["torch", "torchvision"]
+
+[tool.setuptools.packages.find]
+include = ["flynet_robustness*"]

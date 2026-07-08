@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.DS_Store
+.venv/
+env/
+
+# Experiment outputs / large artifacts
+PGD/
+CW/
+NES/
+Reverse_phi/
+figures/
+gifs/
+simulations/*/
+*.gif
+
+# Model checkpoints and cached decoders (not tracked)
+cnn_networks/
+mlp_models*/
+position_decoders/
+velocity_decoders/
+models/
