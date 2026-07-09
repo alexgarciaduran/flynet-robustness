@@ -10,23 +10,21 @@ from ..textures import get_texture
 from .common import amp_dtype, build_out_dir, decode_logits, save_json, save_texture_gray
 
 
-def run_nes(models, cnn=False, steps=100, lr=1e-1, tex_res=128, sigma=1e-2,
-            n_samples=15, base_kwargs=None, save_every=10, texttype="Black",
-            run_id=1, device="cuda", cnn_id="flynet_synthesized"):
+def run_nes(net, decoder, network_id="FlyNet", steps=100, lr=1e-1, tex_res=128, sigma=1e-2,
+            n_samples=15, base_kwargs=None, save_every=10, texttype="Black", run_id=1,
+            device="cuda", extent=15):
     """Estimate the gradient with symmetric Gaussian perturbations and ascend the loss."""
-    out_dir = build_out_dir("NES", texttype, cnn, "gaussian", sigma, run_id, cnn_id)
+    out_dir = build_out_dir("NES", texttype, network_id, "gaussian", sigma, run_id)
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
     save_json(base_kwargs, out_dir / "config.json")
 
     x = to_logits(get_texture(texttype, tex_res).to(device).clamp(0, 1)).detach()
-    x0 = x.clone()
-    renderer_hex = BoxEye(models[0].connectome.config.extent, kernel_size=13)
+    renderer_hex = BoxEye(extent, kernel_size=13)
     criterion = torch.nn.BCEWithLogitsLoss()
     adtype = amp_dtype()
 
     def loss_logits(w):
-        logits = decode_logits(w, models, cnn, cnn_id, base_kwargs, renderer_hex,
-                               models[-1], amp_dtype=adtype)
+        logits = decode_logits(w, net, decoder, network_id, base_kwargs, renderer_hex, adtype)
         return criterion(logits, torch.ones_like(logits)), logits
 
     with torch.inference_mode():

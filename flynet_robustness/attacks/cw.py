@@ -19,24 +19,23 @@ def _dist(tex_adv, tex_clean, norm):
     raise ValueError("CW norm must be 'l2' or 'linf'")
 
 
-def run_cw(models, cnn=False, steps=150, lr=1e-1, tex_res=128, c=1e-2, kappa=0.0,
-           base_kwargs=None, save_every=10, texttype="Black", run_id=1,
-           norm="l2", device="cuda", cnn_id="flynet_synthesized"):
+def run_cw(net, decoder, network_id="FlyNet", steps=150, lr=1e-1, tex_res=128, c=1e-2,
+           kappa=0.0, base_kwargs=None, save_every=10, texttype="Black", run_id=1,
+           norm="l2", device="cuda", extent=15):
     """Minimise dist(tex, tex_clean) + c*max(logit+kappa, 0) (untargeted, clean=hit)."""
-    out_dir = build_out_dir("CW", texttype, cnn, norm, c, run_id, cnn_id)
+    out_dir = build_out_dir("CW", texttype, network_id, norm, c, run_id)
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
     save_json(base_kwargs, out_dir / "config.json")
 
     w0 = to_logits(get_texture(texttype, tex_res).to(device).clamp(0, 1), eps=1e-2).detach()
     w = w0.clone().requires_grad_(True)
     tex_clean = torch.sigmoid(w0)
-    renderer_hex = BoxEye(models[0].connectome.config.extent, kernel_size=13)
+    renderer_hex = BoxEye(extent, kernel_size=13)
     opt = torch.optim.Adam([w], lr=lr)
     adtype = amp_dtype()
 
     def logits_of(x):
-        return decode_logits(x, models, cnn, cnn_id, base_kwargs, renderer_hex,
-                             models[-1], amp_dtype=adtype)
+        return decode_logits(x, net, decoder, network_id, base_kwargs, renderer_hex, adtype)
 
     with torch.no_grad():
         correct = (logits_of(w0) > 0).float()

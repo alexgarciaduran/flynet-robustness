@@ -2,9 +2,10 @@
 
 import numpy as np
 import torch
-from flyvis import EnsembleView, NetworkView
+from flyvis import NetworkView
 from flyvis.network.stimulus import Stimulus
 
+from . import config
 from .config import MOTION_CELL_TYPES
 from .hex_eye import BoxEye
 from .rendering import generate_looming_stimulus
@@ -16,30 +17,16 @@ def _motion_indices(connectome, cell_types=MOTION_CELL_TYPES):
                            if ct.decode() in cell_types])
 
 
-def get_flynet(network_id="flynet_synthesized", device="cuda"):
-    """Load a FlyNet/CTRNN network and its decoded T4/T5 indices.
+def get_flynet(network_id="FlyNet", device="cuda"):
+    """Load FlyNet or CTRNN and its decoded T4/T5 indices.
 
-    Returns (model1, model2, idxs1, idxs2). model2/idxs2 are None except for
-    the two-model ensemble variant ('flynet').
+    Returns (model1, model2, idxs1, idxs2); model2/idxs2 are None (kept for a
+    uniform interface with the two-model ensemble).
     """
     ckpt = {"validation_subdir": "validation", "loss_file_name": "loss"}
-    if network_id == "flynet_no_connectome":
-        model1 = NetworkView("flow/0003/000", best_checkpoint_fn_kwargs=ckpt).init_network().to(device)
-        return model1, None, _motion_indices(model1.connectome), None
-    if network_id == "flynet_synthesized":
-        model1 = NetworkView("flow/0000/synthesized_t4d",
-                             best_checkpoint_fn_kwargs=ckpt).init_network().to(device)
-        return model1, None, _motion_indices(model1.connectome), None
-
-    # Two-model ensemble: best overall + best-T4d cluster model.
-    model1 = NetworkView("flow/0000/000", best_checkpoint_fn_kwargs=ckpt).init_network().to(device)
-    clustering = EnsembleView("flow/0000").clustering("T4d")
-    label = str(np.arange(50)[clustering.labels == 0][0])
-    model2 = NetworkView(f"flow/0000/0{label}",
+    model1 = NetworkView(config.flyvis_id(network_id),
                          best_checkpoint_fn_kwargs=ckpt).init_network().to(device)
-    base = ["T4a", "T4b", "T4c", "T5a", "T5b", "T5c", "T5d"]
-    return model1, model2, _motion_indices(model1.connectome, base), \
-        _motion_indices(model2.connectome, ["T4d"])
+    return model1, None, _motion_indices(model1.connectome), None
 
 
 def forward_flynet(stimulus, model1, idxs1, model2=None, idxs2=None, fps=100, dt=0.01):

@@ -7,38 +7,38 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 
+from .. import config
 from ..feature_extraction import extract_features
 from ..models import forward_flynet
 from ..perturbations import texture_to_hex_batch
 
 
-def build_out_dir(root, texttype, cnn, norm, eps, cnn_id="", run_id=None):
-    """Structured output directory: root/texttype/model/norm/eps/run_id."""
-    model_name = "cnn_" + cnn_id if cnn else cnn_id
+def build_out_dir(root, texttype, network_id, norm, eps, run_id=None):
+    """Structured output directory: root/texttype/network/norm/eps/run_id."""
     eps_str = f"eps_{eps:.0e}" if eps < 1e-2 else f"eps_{eps:g}"
     run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(root) / texttype / model_name / norm / eps_str / f"run_{run_id}"
+    out_dir = Path(root) / texttype / network_id / norm / eps_str / f"run_{run_id}"
     (out_dir / "snapshots").mkdir(parents=True, exist_ok=True)
     return out_dir
 
 
-def decode_logits(tex_logits, models, cnn, cnn_id, base_kwargs, renderer_hex, decoder,
-                  n_frames=2, amp_dtype=torch.float16):
-    """Texture logits -> decoder logits, through the appropriate network."""
-    hex_batch = texture_to_hex_batch(tex_logits, base_kwargs, renderer_hex, cnn_id=cnn_id)
-    if not cnn:
-        model1, model2, idxs1, idxs2, _ = models
-        two_model = not ("no_connectome" in cnn_id or "synthesized" in cnn_id or model2 is None)
-        activity = forward_flynet(hex_batch, model1, idxs1,
-                                  model2 if two_model else None,
-                                  idxs2 if two_model else None).flatten(end_dim=1)
+def decode_logits(tex_logits, net, decoder, network_id, base_kwargs, renderer_hex,
+                  amp_dtype=torch.float16):
+    """Texture logits -> decoder logits, through the appropriate network.
+
+    net is (model1, idxs1, model2, idxs2) for FlyNet/CTRNN, else a CNN/RAFT
+    feature-extractor module.
+    """
+    hex_batch = texture_to_hex_batch(tex_logits, base_kwargs, renderer_hex, network_id=network_id)
+    if not config.is_cnn(network_id):
+        model1, idxs1, model2, idxs2 = net
+        activity = forward_flynet(hex_batch, model1, idxs1, model2, idxs2).flatten(end_dim=1)
+    elif config.kind(network_id) == "raft":
+        with torch.amp.autocast("cuda", dtype=amp_dtype):
+            _, activity, _ = extract_features(net, hex_batch, network_id=network_id)
+        activity = activity.view(activity.shape[0], -1)
     else:
-        model, _, _ = models
-        if "raft" in cnn_id:
-            with torch.amp.autocast("cuda", dtype=amp_dtype):
-                _, activity, _ = extract_features(model, hex_batch, n_frames=2, cnn_id=cnn_id)
-        else:
-            _, activity, _ = extract_features(model, hex_batch, n_frames=n_frames, cnn_id=cnn_id)
+        _, activity, _ = extract_features(net, hex_batch, network_id=network_id)
         activity = activity.view(activity.shape[0], -1)
     return decoder(activity)
 

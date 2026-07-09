@@ -1,15 +1,11 @@
-"""Generate the looming dataset and train task decoders."""
+"""Generate the looming dataset (network activity + positions) from configs."""
 
 import os
-import pickle
 
 import numpy as np
 import torch
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from .decoders import PositionDecoder
 from .models import get_stimulus_and_return_activity
 from .textures import get_texture
 
@@ -28,14 +24,12 @@ def seed_everything(seed=42):
 def save_simulations(model1, idxs1, model2=None, idxs2=None, config_path=None,
                      out_dir="simulations", device="cpu", out_size=416, test=False):
     """Render the fixed trajectory set, run the network and save activity + positions."""
-    seed = 1 if test else 0
-    np.random.seed(seed)
+    np.random.seed(1 if test else 0)
     data = torch.load(config_path, weights_only=False)
     os.makedirs(out_dir, exist_ok=True)
 
     activity_all, positions = [], []
-    n = len(data["shape_all"])
-    for sim in tqdm(range(n)):
+    for sim in tqdm(range(len(data["shape_all"]))):
         seed_everything(seed=sim)
         shape = data["shape_all"][sim]
         with torch.no_grad():
@@ -60,48 +54,3 @@ def prepare_dataset(activity_all, position_all, t_start=10):
     X = torch.cat([a[0][t_start:] for a in activity_all], dim=0)
     Y = torch.cat([p.T[t_start:] for p in position_all], dim=0)
     return X, Y
-
-
-def train_hit_decoder(X_train, y_train, out_path="mlp_models/model_hit.pkl"):
-    """Train the hit/miss MLP classifier (StandardScaler + MLPClassifier)."""
-    from sklearn.neural_network import MLPClassifier
-    mlp = MLPClassifier(hidden_layer_sizes=(512,), activation="tanh", solver="adam",
-                        alpha=1e-1, batch_size=1024, learning_rate_init=1e-3,
-                        max_iter=50, early_stopping=True, n_iter_no_change=10, random_state=0)
-    clf = Pipeline([("scaler", StandardScaler()), ("clf", mlp)]).fit(X_train, y_train)
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "wb") as f:
-        pickle.dump(clf, f)
-    return clf
-
-
-def train_position_decoder(X, Y, X_test=None, Y_test=None, hidden_dims=(128, 16),
-                           n_epochs=200, batch_size=1024, lr=1e-3, patience=50,
-                           min_delta=1e-5, device="cuda"):
-    """Train a position/velocity MLP regressor with early stopping."""
-    model = PositionDecoder(X.shape[1], hidden_dims=hidden_dims, output_dim=Y.shape[1]).to(device)
-    criterion = torch.nn.MSELoss()
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
-    loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X, Y),
-                                         batch_size=batch_size, shuffle=True)
-    best, no_improve, best_state = float("inf"), 0, None
-    for _ in range(n_epochs):
-        model.train()
-        for xb, yb in loader:
-            opt.zero_grad()
-            loss = criterion(model(xb.to(device)), yb.to(device))
-            loss.backward()
-            opt.step()
-        if X_test is not None:
-            model.eval()
-            with torch.no_grad():
-                val = criterion(model(X_test.to(device)), Y_test.to(device)).item()
-            if val < best - min_delta:
-                best, no_improve, best_state = val, 0, model.state_dict()
-            else:
-                no_improve += 1
-                if no_improve >= patience:
-                    break
-    if best_state is not None:
-        model.load_state_dict(best_state)
-    return model

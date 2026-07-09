@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flynet-robustness"
-version = "0.1.0"
+version = "0.2.0"
 description = "Robustness and efficiency benchmark for a connectome-constrained fly visual system model on a collision-detection task."
 readme = "README.md"
 requires-python = ">=3.9"

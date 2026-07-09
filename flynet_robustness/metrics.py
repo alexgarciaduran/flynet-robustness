@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .config import FLOPS
+from .config import flops as _flops
 
 
 def robustness(eps, accuracy):
@@ -26,5 +26,5 @@ def bootstrap_robustness(eps, accuracy_matrix, n_boot=1000, seed=None):
 def lers(R, network_id=None, flops=None):
     """Log-efficiency robustness score: R / log10(FLOPs)."""
     if flops is None:
-        flops = FLOPS[network_id]
+        flops = _flops(network_id)
     return R / np.log10(flops)

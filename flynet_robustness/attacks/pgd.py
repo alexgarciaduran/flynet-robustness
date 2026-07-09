@@ -1,7 +1,5 @@
 """Projected Gradient Descent attack on the object texture (APGD-style)."""
 
-import os
-
 import torch
 from tqdm import tqdm
 
@@ -31,24 +29,22 @@ def _project(x, x0, eps, norm):
     return x0 + delta * factor
 
 
-def run_pgd(models, cnn=False, steps=100, lr=1e-2, tex_res=128, eps=1e-2,
-            base_kwargs=None, save_every=10, texttype="Black", run_id=1,
-            norm="linf", device="cuda", cnn_id="flynet_synthesized",
-            n_restarts=1, checkpoint_frac=0.2, alpha_min_factor=0.1):
+def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, eps=1e-2,
+            base_kwargs=None, save_every=10, texttype="Black", run_id=1, norm="linf",
+            device="cuda", extent=15, n_restarts=1, checkpoint_frac=0.2,
+            alpha_min_factor=0.1):
     """Run PGD, optimising the texture to flip hit->miss. Saves snapshots + loss."""
-    out_dir = build_out_dir("PGD", texttype, cnn, norm, eps, run_id, cnn_id)
+    out_dir = build_out_dir("PGD", texttype, network_id, norm, eps, run_id)
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
     save_json(base_kwargs, out_dir / "config.json")
 
     x0 = to_logits(get_texture(texttype, tex_res).to(device).clamp(0, 1)).detach()
-    model1 = models[0]
-    renderer_hex = BoxEye(model1.connectome.config.extent, kernel_size=13)
+    renderer_hex = BoxEye(extent, kernel_size=13)
     criterion = torch.nn.BCEWithLogitsLoss()
     adtype = amp_dtype()
 
     def loss_of(x):
-        logits = decode_logits(x, models, cnn, cnn_id, base_kwargs, renderer_hex,
-                               models[-1], amp_dtype=adtype)
+        logits = decode_logits(x, net, decoder, network_id, base_kwargs, renderer_hex, adtype)
         target = torch.ones_like(logits)
         return logits, criterion(logits, target), target
 

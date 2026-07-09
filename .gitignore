@@ -5,20 +5,23 @@ __pycache__/
 .DS_Store
 .venv/
 env/
+build/
 
-# Experiment outputs / large artifacts
+# Experiment outputs
 PGD/
 CW/
 NES/
-Reverse_phi/
 figures/
 gifs/
 simulations/*/
 *.gif
 
-# Model checkpoints and cached decoders (not tracked)
-cnn_networks/
-mlp_models*/
-position_decoders/
-velocity_decoders/
+# Weights (keep folder structure + READMEs, ignore the large files)
+checkpoints/**
+!checkpoints/README.md
+decoders/**
+!decoders/README.md
 models/
+*.pth
+*.chkpt
+*.pkl

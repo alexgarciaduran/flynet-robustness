@@ -15,8 +15,8 @@ from ..textures import get_texture
 from .common import amp_dtype, decode_logits
 
 
-def _optimise(w_init, anchor, target, models, cnn, cnn_id, base_kwargs,
-              renderer_hex, decoder, steps, lr, lambda_anchor):
+def _optimise(w_init, anchor, target, net, decoder, network_id, base_kwargs,
+              renderer_hex, steps, lr, lambda_anchor):
     """Optimise cross-entropy to `target` with an L2 anchor to `anchor`."""
     w = w_init.clone().requires_grad_(True)
     opt = torch.optim.Adam([w], lr=lr)
@@ -24,8 +24,7 @@ def _optimise(w_init, anchor, target, models, cnn, cnn_id, base_kwargs,
     adtype = amp_dtype()
     history = []
     for _ in tqdm(range(steps)):
-        logits = decode_logits(w, models, cnn, cnn_id, base_kwargs, renderer_hex,
-                               decoder, amp_dtype=adtype)
+        logits = decode_logits(w, net, decoder, network_id, base_kwargs, renderer_hex, adtype)
         tgt = torch.full_like(logits, float(target))
         loss = ce(logits, tgt) + lambda_anchor * (torch.sigmoid(w) - anchor).pow(2).mean()
         opt.zero_grad(set_to_none=True)
@@ -35,19 +34,19 @@ def _optimise(w_init, anchor, target, models, cnn, cnn_id, base_kwargs,
     return w.detach(), history
 
 
-def counterfactual_restoration(models, decoder, cnn=False, cnn_id="flynet_synthesized",
-                               steps=250, lr=1e-2, tex_res=128, lambda_base=0.02,
-                               texttype="Black", base_kwargs=None, device="cuda"):
+def counterfactual_restoration(net, decoder, network_id="FlyNet", steps=250, lr=1e-2,
+                               tex_res=128, lambda_base=0.02, texttype="Black",
+                               base_kwargs=None, device="cuda", extent=15):
     """Return (illusion_texture, restored_texture) and their loss histories."""
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
-    renderer_hex = BoxEye(models[0].connectome.config.extent, kernel_size=13)
+    renderer_hex = BoxEye(extent, kernel_size=13)
     base = get_texture(texttype, tex_res).to(device).clamp(0, 1)
     w_base = to_logits(base).detach()
     tex_base = torch.sigmoid(w_base)
 
-    illusion, hist1 = _optimise(w_base, tex_base, 0, models, cnn, cnn_id, base_kwargs,
-                                renderer_hex, decoder, steps, lr, lambda_base)
+    illusion, hist1 = _optimise(w_base, tex_base, 0, net, decoder, network_id, base_kwargs,
+                                renderer_hex, steps, lr, lambda_base)
     tex_illusion = torch.sigmoid(illusion)
-    restored, hist2 = _optimise(illusion, tex_illusion, 1, models, cnn, cnn_id, base_kwargs,
-                                renderer_hex, decoder, steps, lr, lambda_base)
+    restored, hist2 = _optimise(illusion, tex_illusion, 1, net, decoder, network_id, base_kwargs,
+                                renderer_hex, steps, lr, lambda_base)
     return illusion, restored, hist1, hist2

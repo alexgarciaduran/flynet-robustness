@@ -65,6 +65,11 @@ def motion_jitter(frames, max_shift=5, seed=None, device="cpu"):
 # --- Rendering wrappers -----------------------------------------------------
 
 
+def _is_raft(network_id):
+    from . import config
+    return config.kind(network_id) == "raft"
+
+
 def _render(tex_logits, base_kwargs):
     from .rendering import generate_looming_stimulus
     tex = torch.sigmoid(tex_logits)
@@ -72,16 +77,16 @@ def _render(tex_logits, base_kwargs):
     return frames_gray, frames_rgb, position
 
 
-def texture_to_hex_batch(tex_logits, base_kwargs, renderer_hex, cnn_id="raft_large",
+def texture_to_hex_batch(tex_logits, base_kwargs, renderer_hex, network_id="RAFT_12",
                          hex_rendering=True):
     """Texture logits -> model input (hex batch for FlyNet/CNN, RGB frames for RAFT)."""
     frames_gray, frames_rgb, _ = _render(tex_logits, base_kwargs)
-    if "raft" in cnn_id:
+    if _is_raft(network_id):
         return frames_rgb
     return renderer_hex(frames_gray[None]) if hex_rendering else frames_gray[None]
 
 
-def texture_to_input_perturbed(tex_logits, base_kwargs, renderer_hex, cnn_id="raft_large",
+def texture_to_input_perturbed(tex_logits, base_kwargs, renderer_hex, network_id="RAFT_12",
                                perturbation=None, **kwargs):
     """Render a texture and apply a named video perturbation before decoding.
 
@@ -89,7 +94,7 @@ def texture_to_input_perturbed(tex_logits, base_kwargs, renderer_hex, cnn_id="ra
     Returns (model_input, position).
     """
     frames_gray, frames_rgb, position = _render(tex_logits, base_kwargs)
-    is_raft = "raft" in cnn_id
+    is_raft = _is_raft(network_id)
 
     if perturbation == "fog":
         frames_gray = apply_fog(frames_gray, contrast_scale=kwargs.get("contrast_scale", 1.0))

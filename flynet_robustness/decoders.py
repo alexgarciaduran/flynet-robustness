@@ -5,8 +5,7 @@ import pickle
 import torch
 from torch import nn
 
-_FLYNET_SUFFIX = {"flynet_synthesized": "_synthesized_model",
-                  "flynet_no_connectome": "no_connectome", "flynet": ""}
+from . import config
 
 
 class TorchMLP(nn.Module):
@@ -49,19 +48,19 @@ class PositionDecoder(nn.Module):
         return self.network(x)
 
 
-def load_decoder(cnn=False, cnn_id="flynet_synthesized"):
-    """Load the hit/miss classifier as a frozen TorchMLP."""
-    suffix = "_cnn_" + cnn_id if cnn else _FLYNET_SUFFIX.get(cnn_id, "")
-    path = f"mlp_models{suffix}/model_hit{suffix}.pkl"
+def load_decoder(network_id="FlyNet", path=None):
+    """Load the hit/miss classifier for a network as a frozen TorchMLP."""
+    path = path or config.decoder_path(network_id, "hit")
     with open(path, "rb") as f:
         pipeline = pickle.load(f)
     return TorchMLP(pipeline)
 
 
-def load_decoder_pos_vel(load_velocity=True, input_dim=5768, device="cuda"):
-    """Load a position or velocity regressor."""
-    label = "velocity" if load_velocity else "position"
-    path = f"{label}_decoders/{label}_decoder_flynet_synthesized.pth"
+def load_decoder_pos_vel(network_id="FlyNet", load_velocity=True, input_dim=5768,
+                         device="cuda", path=None):
+    """Load a position or velocity regressor for a network."""
+    kind = "velocity" if load_velocity else "position"
+    path = path or config.decoder_path(network_id, kind)
     model = PositionDecoder(input_dim=input_dim, hidden_dims=(128, 16), output_dim=3)
     model.load_state_dict(torch.load(path))
     return model.to(device).eval()
