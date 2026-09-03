@@ -26,7 +26,7 @@ adversarial attacks and common video corruptions relative to computational cost.
 ## Installation
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/alexgarciaduran/flynet-robustness.git
 cd flynet-robustness
 pip install -e .
 ```
