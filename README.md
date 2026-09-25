@@ -4,7 +4,7 @@ Code for the collision-detection robustness/efficiency benchmark built around
 **FlyNet** (a connectome-constrained, task-optimized model of the *Drosophila*
 optic lobe). The pipeline renders looming stimuli in a differentiable 3D scene,
 runs them through FlyNet and a set of baselines (CTRNN, sparse CTRNN, degree-matched
-FlyNet controls, vCNN, gCNN, RAFT),
+FlyNet controls, vCNN, gCNN, RAFT, RAFT on hex-sampled input),
 decodes hit/miss and object position/velocity, and evaluates robustness under
 adversarial attacks and common video corruptions relative to computational cost.
 
@@ -14,7 +14,7 @@ adversarial attacks and common video corruptions relative to computational cost.
   trajectories (PyTorch3D), sampled onto a hexagonal lattice.
 - **Networks** — FlyNet, CTRNN, sparse CTRNN and 10 degree-matched FlyNet
   controls (`flyvis`), vanilla/global-pooling hex CNNs (2/5/10 input frames),
-  and RAFT optical-flow baselines.
+  and RAFT optical-flow baselines (Sintel RGB, and hex-sampled Sintel: RAFT-S).
 - **Attacks** — PGD, Carlini-Wagner, NES, counterfactual restoration, and
   texture optimization of the input's 2-point (Hassenstein–Reichardt) correlation.
 - **Perturbations** — additive white noise (texture / frames), shot noise,
@@ -68,6 +68,7 @@ its loading details, cost and display metadata; legacy ids still resolve.
 | `gCNN_2_frames` | global-pooling hex CNN | 2 | 7.88e10 | 414,064 |
 | `RAFTsmall` | RAFT (small) | 2 | 6.14e12 | 1.0M |
 | `RAFT_1` / `RAFT_6` / `RAFT_12` | RAFT (1/6/12 iters) | 2 | 9.03e12 – 2.74e13 | 5.3M |
+| `RAFT_1_S` / `RAFT_6_S` / `RAFT_12_S` | RAFT trained on hex-sampled Sintel (FlyNet's input) | 2 | 3.33e12 – 1.03e13 | 5.3M |
 
 \* same nodes and edge count as FlyNet (FLOPs scale with edges).
 

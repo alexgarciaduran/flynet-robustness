@@ -49,7 +49,7 @@ def decode_logits(tex_logits, net, decoder, network_id, base_kwargs, renderer_he
     if not config.is_cnn(network_id):
         model1, idxs1, model2, idxs2 = net
         activity = forward_flynet(hex_batch, model1, idxs1, model2, idxs2).flatten(end_dim=1)
-    elif config.kind(network_id) == "raft":
+    elif config.kind(network_id) in ("raft", "raft_hex"):
         with torch.amp.autocast("cuda", dtype=amp_dtype):
             _, activity, _ = extract_features(net, hex_batch, network_id=network_id)
         activity = activity.view(activity.shape[0], -1)

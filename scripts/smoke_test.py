@@ -27,6 +27,8 @@ def main():
     assert C.n_frames("vCNN_5_frames") == 5 and C.n_frames("vCNN_10_frames") == 10
     assert C.raft_iters("RAFT_6") == 6 and not C.is_cnn("FlyNet")
     assert C.n_frames("0") == 2 and C.label("raft_large") == "RAFT-12"  # legacy ids
+    assert C.kind("RAFT_12_S") == "raft_hex" and C.input_dim("RAFT_6_S") == 721
+    assert C.label("raft_hexsintel_large") == "RAFT-12-S"
     assert C.flyvis_id("sCTRNN").startswith("flow/0215") and C.flyvis_id("flynet_degree_matched_3") == "flow/0301_best10/003"
 
     for t in fr.TEXTURE_TYPES:

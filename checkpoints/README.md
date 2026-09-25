@@ -10,6 +10,7 @@ checkpoints/
   gCNN_2_frames/network.chkpt      # state_dict key: "state_dict"
 ```
 
-RAFT weights go in `../models/` as `raft-small.pth` / `raft-sintel.pth`.
+RAFT weights go in `../models/` as `raft-small.pth` / `raft-sintel.pth`; RAFT-S (hex-sampled
+Sintel) as `raft-sintel-flyvis-split-hex-lum-gridflow-256-bs8-50k_20260615-124452.pth`.
 FlyNet / CTRNN weights are managed by flyvis (see `scripts/download_assets.py`).
 Paths are resolved by `flynet_robustness.config.checkpoint_path(network_id)`.

@@ -46,7 +46,8 @@ def evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes=Non
     """Accuracy vs magnitude and robustness R for one perturbation on one trajectory.
 
     magnitudes default to the paper's sweep. Noise draw t uses torch seed `seed + t`,
-    so all networks see the same noise. Returns dict with magnitudes, accuracy, robustness, lers.
+    so all networks see the same noise; fog is deterministic (one draw).
+    Returns dict with magnitudes, accuracy, robustness, lers.
     """
     mode, param, identity, default = PERTURBATIONS[perturbation]
     magnitudes = np.asarray(default if magnitudes is None else magnitudes, dtype=float)
@@ -67,7 +68,7 @@ def evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes=Non
     with torch.no_grad():
         correct = logits() > 0
         acc = np.array([np.mean([1 - ((logits(m, t) <= 0) & correct).sum().item() / max(correct.sum().item(), 1)
-                                 for t in range(1 if m == identity else n_trials)])
+                                 for t in range(1 if m == identity or mode == "fog" else n_trials)])
                         for m in magnitudes])
     R = robustness(magnitudes, acc)
     return {"magnitudes": magnitudes, "accuracy": acc, "robustness": R, "lers": lers(R, network_id)}

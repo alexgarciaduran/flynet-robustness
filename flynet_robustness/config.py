@@ -22,9 +22,13 @@ def _cnn(n_frames, state_key, flops, params, label, color):
                 flops=flops, params=params, label=label, color=color)
 
 
-def _raft(iters, small, flops, params, label, color):
-    return dict(kind="raft", iters=iters, small=small, n_frames=2,
+def _raft(iters, small, flops, params, label, color, kind="raft", ckpt=None):
+    return dict(kind=kind, iters=iters, small=small, n_frames=2, ckpt=ckpt,
                 flops=flops, params=params, label=label, color=color)
+
+
+# RAFT-S: RAFT trained on hex-sampled Sintel luminance (FlyNet's 721-column input).
+RAFT_HEX_CKPT = "raft-sintel-flyvis-split-hex-lum-gridflow-256-bs8-50k_20260615-124452.pth"
 
 
 # --- Network registry -------------------------------------------------------
@@ -55,6 +59,8 @@ NETWORKS = {
     "RAFT_1": _raft(1, False, 9.029e12, 5_257_512, "RAFT-1", "lightcoral"),
     "RAFT_6": _raft(6, False, 1.738e13, 5_257_512, "RAFT-6", "chocolate"),
     "RAFT_12": _raft(12, False, 2.740e13, 5_257_512, "RAFT-12", "crimson"),
+    **{f"RAFT_{i}_S": _raft(i, False, f, 5_257_512, f"RAFT-{i}-S", c, kind="raft_hex", ckpt=RAFT_HEX_CKPT)
+       for i, f, c in [(1, 3.332e12, "plum"), (6, 6.495e12, "orchid"), (12, 1.029e13, "darkviolet")]},
 }
 
 # Old id -> readable id, for migrating existing paths/results.
@@ -65,6 +71,8 @@ LEGACY_IDS = {
     "global_pooling": "gCNN_2_frames",
     "raft_small": "RAFTsmall", "raft_large_no_recurrence": "RAFT_1",
     "raft_large_half_recurrence": "RAFT_6", "raft_large": "RAFT_12",
+    "raft_hexsintel_large_no_recurrence": "RAFT_1_S", "raft_hexsintel_large_half_recurrence": "RAFT_6_S",
+    "raft_hexsintel_large": "RAFT_12_S",
 }
 
 
@@ -118,8 +126,8 @@ def raft_iters(network_id):
 def checkpoint_path(network_id):
     """Path to a CNN/gCNN/RAFT checkpoint under CHECKPOINT_DIR / RAFT_MODEL_DIR."""
     s = spec(network_id)
-    if s["kind"] == "raft":
-        fname = "raft-small.pth" if s["small"] else "raft-sintel.pth"
+    if s["kind"] in ("raft", "raft_hex"):
+        fname = s["ckpt"] or ("raft-small.pth" if s["small"] else "raft-sintel.pth")
         return os.path.join(RAFT_MODEL_DIR, fname)
     canonical = next(k for k, v in NETWORKS.items() if v is s)
     return os.path.join(CHECKPOINT_DIR, canonical, "network.chkpt")
@@ -155,7 +163,7 @@ def _legacy_decoder_path(network_id, kind_="hit"):
 
 
 # Input dimensionality (columns / pixels) per network, for noise normalization.
-INPUT_DIM = {"flynet": 721, "cnn": 721, "gcnn": 721, "raft": 416 ** 2}
+INPUT_DIM = {"flynet": 721, "cnn": 721, "gcnn": 721, "raft": 416 ** 2, "raft_hex": 721}
 
 
 def input_dim(network_id):
