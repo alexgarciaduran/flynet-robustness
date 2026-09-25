@@ -7,7 +7,7 @@ from ..config import DEFAULT_STIMULUS
 from ..decoders import to_logits
 from ..hex_eye import BoxEye
 from ..textures import get_texture
-from .common import amp_dtype, build_out_dir, decode_logits, save_json, save_texture_gray
+from .common import amp_dtype, build_out_dir, decode_logits, flip_rates, save_json, save_texture_gray
 
 
 def _dist(tex_adv, tex_clean, norm):
@@ -38,7 +38,7 @@ def run_cw(net, decoder, network_id="FlyNet", steps=150, lr=1e-1, tex_res=128, c
         return decode_logits(x, net, decoder, network_id, base_kwargs, renderer_hex, adtype)
 
     with torch.no_grad():
-        correct = (logits_of(w0) > 0).float()
+        correct = logits_of(w0) > 0
 
     loss_history = []
     for step in tqdm(range(1, steps + 1)):
@@ -50,10 +50,10 @@ def run_cw(net, decoder, network_id="FlyNet", steps=150, lr=1e-1, tex_res=128, c
         opt.step()
 
         with torch.no_grad():
-            pred = (logits_of(w) > 0).float()
-            flip = ((pred != 1) & (correct == 1)).float().mean().item()
-        loss_history.append({"step": step, "loss": float(loss.detach()),
-                             "dist": float(dist.detach()), "label_flip": flip})
+            d = (torch.sigmoid(w) - tex_clean).flatten(1)
+            size = (d.norm(dim=1) if norm == "l2" else d.abs().amax(1)).mean().item()
+            loss_history.append({"step": step, "loss": float(loss.detach()), "dist": float(dist.detach()),
+                                 "max_delta": size, **flip_rates(logits_of(w), correct)})
         if step % save_every == 0 or step == 1:
             save_texture_gray(w, out_dir / "snapshots" / f"step_{step:04d}_gray.png")
             torch.save(w.detach().cpu(), out_dir / "snapshots" / f"step_{step:04d}.pt")

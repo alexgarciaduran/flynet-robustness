@@ -104,7 +104,8 @@ def train_position_decoder(X, Y, X_test=None, Y_test=None, network_id="FlyNet",
             with torch.no_grad():
                 val = criterion(model(X_test.to(device)), Y_test.to(device)).item()
             if val < best - min_delta:
-                best, no_improve, best_state = val, 0, model.state_dict()
+                best, no_improve = val, 0
+                best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
             else:
                 no_improve += 1
                 if no_improve >= patience:

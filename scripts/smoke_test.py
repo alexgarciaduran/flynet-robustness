@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 import flynet_robustness as fr
 from flynet_robustness import config as C
 from flynet_robustness import plotting as P
-from flynet_robustness.analysis import decoding, locality, recurrence, representational
+from flynet_robustness.analysis import decoding, illusion, locality, recurrence, representational
 from flynet_robustness.perturbations import (
     additive_white_noise, apply_fog, flicker, motion_jitter, shot_noise)
 from flynet_robustness.training import train_hit_decoder, train_position_decoder
@@ -27,6 +27,7 @@ def main():
     assert C.n_frames("vCNN_5_frames") == 5 and C.n_frames("vCNN_10_frames") == 10
     assert C.raft_iters("RAFT_6") == 6 and not C.is_cnn("FlyNet")
     assert C.n_frames("0") == 2 and C.label("raft_large") == "RAFT-12"  # legacy ids
+    assert C.flyvis_id("sCTRNN").startswith("flow/0215") and C.flyvis_id("flynet_degree_matched_3") == "flow/0301_best10/003"
 
     for t in fr.TEXTURE_TYPES:
         assert fr.get_texture(t, 32).shape == (1, 32, 32, 1)
@@ -61,6 +62,10 @@ def main():
     pop, neu = representational.trial_similarity([np.random.rand(8, 6) for _ in range(4)])
     assert pop.shape == (4, 4)
     assert decoding.r2_score(yt, yt + 0.01) > 0.9
+    inner, outer = illusion.radial_pairs()
+    assert len(inner) == 720 and illusion.flip_mask(100, 8).any()
+    pats = {c: np.random.rand(5, 30) for c in illusion.CONDITIONS}
+    assert np.allclose(illusion.closeness(pats)["projection"]["reverse_phi"], 1)
 
     # training (synthetic, no save)
     acts = [torch.tensor(np.random.randn(1, 40, 20) + (2 if k % 2 else -2), dtype=torch.float32)

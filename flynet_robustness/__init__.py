@@ -1,5 +1,18 @@
-"""Neural analyses: recurrence, locality, representational similarity, decoding."""
+"""FlyNet robustness & efficiency benchmark.
 
-from . import decoding, locality, recurrence, representational
+Lightweight utilities (config, metrics, textures, perturbation ops) import
+directly. Modules needing flyvis / PyTorch3D / RAFT (`rendering`, `models`,
+`cnn`, `feature_extraction`, `attacks`, `dataset`) are imported explicitly,
+e.g. ``from flynet_robustness.models import get_flynet``.
+"""
 
-__all__ = ["recurrence", "locality", "representational", "decoding"]
+__version__ = "0.2.0"
+
+from . import config, metrics, perturbations, textures
+from .metrics import lers, robustness
+from .textures import TEXTURE_TYPES, get_texture
+
+__all__ = [
+    "config", "metrics", "perturbations", "textures",
+    "get_texture", "TEXTURE_TYPES", "robustness", "lers", "__version__",
+]

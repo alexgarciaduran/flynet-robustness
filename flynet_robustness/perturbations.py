@@ -11,8 +11,9 @@ import torch
 
 
 def additive_white_noise(x, sigma):
-    """Zero-mean Gaussian noise of std sigma added to the input."""
-    return x + sigma * torch.randn_like(x)
+    """Zero-mean Gaussian noise of std sigma added to the input (shared across RGB channels)."""
+    shape = x.shape[:-1] + (1,) if x.shape[-1] == 3 else x.shape
+    return x + sigma * torch.randn(shape, device=x.device, dtype=x.dtype)
 
 
 def flicker(frames, strength, generator=None):
@@ -90,9 +91,13 @@ def texture_to_input_perturbed(tex_logits, base_kwargs, renderer_hex, network_id
                                perturbation=None, **kwargs):
     """Render a texture and apply a named video perturbation before decoding.
 
-    perturbation in {None, 'awn', 'fog', 'shot', 'flicker', 'jitter'}.
+    perturbation in {None, 'awn_texture', 'awn', 'fog', 'shot', 'flicker', 'jitter'}.
     Returns (model_input, position).
     """
+    if perturbation == "awn_texture":  # noise on the texture pixels
+        p = (torch.sigmoid(tex_logits) + kwargs.get("sigma", 0.0) * torch.randn_like(tex_logits))
+        p = p.clamp(1e-4, 1 - 1e-4)
+        tex_logits = torch.log(p / (1 - p))
     frames_gray, frames_rgb, position = _render(tex_logits, base_kwargs)
     is_raft = _is_raft(network_id)
 
@@ -100,7 +105,7 @@ def texture_to_input_perturbed(tex_logits, base_kwargs, renderer_hex, network_id
         frames_gray = apply_fog(frames_gray, contrast_scale=kwargs.get("contrast_scale", 1.0))
         frames_rgb = apply_fog(frames_rgb, contrast_scale=kwargs.get("contrast_scale", 1.0))
     if perturbation == "jitter":
-        frames_rgb, _, _ = motion_jitter(frames_rgb, max_shift=kwargs.get("jitter", 0),
+        frames_rgb, _, _ = motion_jitter(frames_rgb, max_shift=int(kwargs.get("jitter", 0)),
                                          seed=kwargs.get("seed"), device=frames_rgb.device.type)
         frames_gray = frames_rgb[..., 0]
 

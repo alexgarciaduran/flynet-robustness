@@ -25,3 +25,6 @@ models/
 *.pth
 *.chkpt
 *.pkl
+
+# Illusion-analysis data (notebook 07)
+data/illusion/

@@ -8,7 +8,9 @@ from .config import flops as _flops
 def robustness(eps, accuracy):
     """Robustness R: mean accuracy over the swept perturbation range (AUC)."""
     eps = np.asarray(eps, dtype=float)
-    return np.trapezoid(np.asarray(accuracy, dtype=float), eps) / (eps.max() - eps.min())
+    order = np.argsort(eps)
+    acc = np.asarray(accuracy, dtype=float)[order]
+    return np.trapezoid(acc, eps[order]) / (eps.max() - eps.min())
 
 
 def bootstrap_robustness(eps, accuracy_matrix, n_boot=1000, seed=None):

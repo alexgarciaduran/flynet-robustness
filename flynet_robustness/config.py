@@ -37,9 +37,18 @@ NETWORKS = {
     "CTRNN": dict(kind="flynet", flyvis="flow/0003/000", n_frames=None,
                   flops=7.832e8, params=11593, label="CTRNN", color="yellowgreen",
                   legacy="no_connectome"),
+    # CTRNN pruned to FlyNet's 1,513,231 edges; FLOPs scale with edges -> FlyNet's.
+    "sCTRNN": dict(kind="flynet", flyvis="flow/0215_pruned_current_ft_compact/000", n_frames=None,
+                   flops=1.863e8, params=None, label="sCTRNN", color="olivedrab",
+                   legacy="_pruned_ctrnn"),
+    # Degree-matched (locality-preserving rewired) FlyNet controls, 0 = best task error.
+    **{f"flynet_degree_matched_{i}": dict(kind="flynet", flyvis=f"flow/0301_best10/{i:03d}",
+                                          n_frames=None, flops=1.863e8, params=734,
+                                          label=f"FlyNet-DM{i}", color="mediumseagreen")
+       for i in range(10)},
     "vCNN_2_frames": _cnn(2, "state_dict", 7.879e10, 414064, "vCNN", "royalblue"),
-    "vCNN_5_frames": _cnn(5, "network", 7.879e10, 414224, "vCNN (5f)", "cornflowerblue"),
-    "vCNN_10_frames": _cnn(10, "network", 7.879e10, 414624, "vCNN (10f)", "mediumblue"),
+    "vCNN_5_frames": _cnn(5, "network", 7.56e10, 414224, "vCNN (5f)", "cornflowerblue"),
+    "vCNN_10_frames": _cnn(10, "network", 7.17e10, 414624, "vCNN (10f)", "mediumblue"),
     "gCNN_2_frames": dict(kind="gcnn", n_frames=2, state_key="state_dict",
                           flops=7.880e10, params=414064, label="gCNN", color="lightblue"),
     "RAFTsmall": _raft(12, True, 6.138e12, 1_000_000, "RAFTsmall", "darkorange"),
@@ -51,7 +60,9 @@ NETWORKS = {
 # Old id -> readable id, for migrating existing paths/results.
 LEGACY_IDS = {
     "flynet_synthesized": "FlyNet", "flynet_no_connectome": "CTRNN",
-    "0": "vCNN_2_frames", "global_pooling": "gCNN_2_frames",
+    "flynet_pruned_ctrnn": "sCTRNN",
+    "0": "vCNN_2_frames", "5_frames": "vCNN_5_frames", "10_frames": "vCNN_10_frames",
+    "global_pooling": "gCNN_2_frames",
     "raft_small": "RAFTsmall", "raft_large_no_recurrence": "RAFT_1",
     "raft_large_half_recurrence": "RAFT_6", "raft_large": "RAFT_12",
 }
@@ -130,7 +141,9 @@ def _legacy_decoder_path(network_id, kind_="hit"):
     """Reconstruct the original flat decoder path (pre-reorg)."""
     s = spec(network_id)
     if s["kind"] == "flynet":
-        tag = s.get("legacy", "")
+        tag = s.get("legacy")
+        if tag is None:
+            return None
         if kind_ == "hit":
             return f"mlp_models{tag}/model_hit{tag}.pkl"
         return f"{'velocity' if kind_ == 'velocity' else 'position'}_decoders/" \

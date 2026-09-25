@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 
 from .. import config
@@ -13,17 +14,32 @@ from ..models import forward_flynet
 from ..perturbations import texture_to_hex_batch
 
 
+def _eps_dir(eps):
+    return f"eps_{eps:.0e}" if eps < 1e-2 else f"eps_{eps:g}"
+
+
 def build_out_dir(root, texttype, network_id, norm, eps, run_id=None):
     """Structured output directory: root/texttype/network/norm/eps/run_id."""
-    eps_str = f"eps_{eps:.0e}" if eps < 1e-2 else f"eps_{eps:g}"
     run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(root) / texttype / network_id / norm / eps_str / f"run_{run_id}"
+    out_dir = Path(root) / texttype / network_id / norm / _eps_dir(eps) / f"run_{run_id}"
     (out_dir / "snapshots").mkdir(parents=True, exist_ok=True)
     return out_dir
 
 
+def final_values(root, texttype, network_id, norm, values, runs, key="avg_flip_correct_initially"):
+    """(n_values, runs) final `key` of saved runs (best restart = highest final flip); NaN if missing."""
+    out = np.full((len(values), runs), np.nan)
+    for i, v in enumerate(values):
+        for r in range(runs):
+            f = Path(root) / texttype / network_id / norm / _eps_dir(v) / f"run_{r + 1}" / "loss_history.pt"
+            if f.exists():
+                last = {e.get("restart", 0): e for e in torch.load(f, map_location="cpu", weights_only=False)}
+                out[i, r] = max(last.values(), key=lambda e: e["avg_flip_correct_initially"])[key]
+    return out
+
+
 def decode_logits(tex_logits, net, decoder, network_id, base_kwargs, renderer_hex,
-                  amp_dtype=torch.float16):
+                  amp_dtype=torch.float16, return_activity=False):
     """Texture logits -> decoder logits, through the appropriate network.
 
     net is (model1, idxs1, model2, idxs2) for FlyNet/CTRNN, else a CNN/RAFT
@@ -40,7 +56,15 @@ def decode_logits(tex_logits, net, decoder, network_id, base_kwargs, renderer_he
     else:
         _, activity, _ = extract_features(net, hex_batch, network_id=network_id)
         activity = activity.view(activity.shape[0], -1)
-    return decoder(activity)
+    logits = decoder(activity)
+    return (logits, activity) if return_activity else logits
+
+
+def flip_rates(logits, correct):
+    """Frames flipped to miss: overall, and among the frames initially classified as hit."""
+    flipped = logits <= 0
+    return {"label_flip": flipped.float().mean().item(),
+            "avg_flip_correct_initially": (flipped & correct).sum().item() / max(correct.sum().item(), 1)}
 
 
 def save_texture_gray(tex_logits, png_path):

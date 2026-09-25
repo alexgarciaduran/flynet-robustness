@@ -62,7 +62,7 @@ def load_decoder_pos_vel(network_id="FlyNet", load_velocity=True, input_dim=5768
     kind = "velocity" if load_velocity else "position"
     path = path or config.decoder_path(network_id, kind)
     model = PositionDecoder(input_dim=input_dim, hidden_dims=(128, 16), output_dim=3)
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(torch.load(path, map_location=device))
     return model.to(device).eval()
 
 

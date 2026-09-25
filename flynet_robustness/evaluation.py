@@ -1,7 +1,9 @@
-"""Evaluate networks under video perturbations as an attack.
+"""Evaluate networks under video perturbations as an attack (paper protocol).
 
-Sweeps a perturbation magnitude, decodes p(hit) over the sweep, and returns
-per-magnitude accuracy plus the robustness R (area under the accuracy curve).
+Accuracy = 1 - fraction of the initially-correct (hit) frames flipped, averaged
+over noise draws; robustness R = area under accuracy vs magnitude. Magnitudes
+are in FlyNet units: AWN-frames sigma and shot-noise photon counts are matched
+to the network input size N (sigma * sqrt(721/N), c * N/721).
 """
 
 import numpy as np
@@ -17,47 +19,55 @@ from .models import forward_flynet
 from .perturbations import texture_to_input_perturbed
 from .textures import get_texture
 
-# Perturbation name -> (kwarg name expected by texture_to_input_perturbed, mode).
+# name -> (texture_to_input_perturbed mode, magnitude kwarg, identity magnitude, paper magnitudes)
 PERTURBATIONS = {
-    "AWN": ("awn", "sigma"), "Shot_noise": ("shot", "photon_count"),
-    "Flicker": ("flicker", "strength"), "Motion_jitter": ("jitter", "jitter"),
-    "Fog": ("fog", "contrast_scale"),
+    "AWN_texture": ("awn_texture", "sigma", 0, (0, 0.1, 0.2, 0.4, 0.6, 0.8)),
+    "AWN_frames": ("awn", "sigma", 0, (0, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 5e-2)),
+    "Shot_noise": ("shot", "photon_count", None, (1e4, 5e3, 1e3, 5e2, 1e2, 5e1, 2e1, 1e1)),
+    "Flicker": ("flicker", "strength", 0, (0, 0.01, 0.02, 0.04, 0.05)),
+    "Motion_jitter": ("jitter", "jitter", 0, (0, 1, 2, 3, 4, 5)),
+    "Fog": ("fog", "contrast_scale", 1, (1, 0.5, 0.1, 0.05, 0.02, 0.01)),
 }
 
 
-def _decode(inp, net, decoder, network_id):
+def _logits(inp, net, decoder, network_id):
     if not config.is_cnn(network_id):
         model1, idxs1, model2, idxs2 = net
         activity = forward_flynet(inp, model1, idxs1, model2, idxs2).flatten(end_dim=1)
     else:
         _, activity, _ = extract_features(net, inp, network_id=network_id)
         activity = activity.view(activity.shape[0], -1)
-    return torch.sigmoid(decoder(activity))
+    return decoder(activity)
 
 
-def evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes,
+def evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes=None,
                           texttype="Black", base_kwargs=None, device="cuda", extent=15,
-                          n_trials=1, seed=0):
-    """Accuracy vs magnitude and robustness R for one perturbation.
+                          n_trials=10, seed=0):
+    """Accuracy vs magnitude and robustness R for one perturbation on one trajectory.
 
-    Returns dict with magnitudes, accuracy, robustness, lers.
+    magnitudes default to the paper's sweep. Noise draw t uses torch seed `seed + t`,
+    so all networks see the same noise. Returns dict with magnitudes, accuracy, robustness, lers.
     """
-    assert perturbation in PERTURBATIONS, f"unknown perturbation {perturbation}"
-    kw_name, _ = PERTURBATIONS[perturbation]
+    mode, param, identity, default = PERTURBATIONS[perturbation]
+    magnitudes = np.asarray(default if magnitudes is None else magnitudes, dtype=float)
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
     renderer_hex = BoxEye(extent, kernel_size=13)
     x_logits = to_logits(get_texture(texttype).to(device))
+    n_ratio = config.input_dim(network_id) / config.input_dim("FlyNet")
+    unit = {"awn": n_ratio ** -0.5, "shot": n_ratio}.get(mode, 1.0)
 
-    acc = np.zeros(len(magnitudes))
-    for j, mag in enumerate(magnitudes):
-        trials = []
-        for t in range(n_trials):
-            inp, _ = texture_to_input_perturbed(
-                x_logits, base_kwargs, renderer_hex, network_id=network_id,
-                perturbation=(None if mag == 0 else kw_name), seed=seed + t, **{kw_name: mag})
-            p_hit = _decode(inp, net, decoder, network_id)
-            trials.append((p_hit > 0.5).float().mean().item())  # hit trials -> correct = hit
-        acc[j] = float(np.mean(trials))
+    def logits(mag=None, t=0):
+        torch.manual_seed(seed + t)
+        pert = None if mag is None or mag == identity else mode
+        inp, _ = texture_to_input_perturbed(x_logits, base_kwargs, renderer_hex, network_id=network_id,
+                                            perturbation=pert, seed=seed + t,
+                                            **({} if mag is None else {param: mag * unit}))
+        return _logits(inp, net, decoder, network_id)
+
+    with torch.no_grad():
+        correct = logits() > 0
+        acc = np.array([np.mean([1 - ((logits(m, t) <= 0) & correct).sum().item() / max(correct.sum().item(), 1)
+                                 for t in range(1 if m == identity else n_trials)])
+                        for m in magnitudes])
     R = robustness(magnitudes, acc)
-    return {"magnitudes": np.asarray(magnitudes), "accuracy": acc,
-            "robustness": R, "lers": lers(R, network_id)}
+    return {"magnitudes": magnitudes, "accuracy": acc, "robustness": R, "lers": lers(R, network_id)}

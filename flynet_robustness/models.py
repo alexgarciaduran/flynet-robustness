@@ -18,8 +18,9 @@ def _motion_indices(connectome, cell_types=MOTION_CELL_TYPES):
 
 
 def get_flynet(network_id="FlyNet", device="cuda"):
-    """Load FlyNet or CTRNN and its decoded T4/T5 indices.
+    """Load a flyvis network and its decoded T4/T5 indices.
 
+    ids: 'FlyNet', 'CTRNN', 'sCTRNN', 'flynet_degree_matched_{0..9}'.
     Returns (model1, model2, idxs1, idxs2); model2/idxs2 are None (kept for a
     uniform interface with the two-model ensemble).
     """
@@ -34,14 +35,14 @@ def forward_flynet(stimulus, model1, idxs1, model2=None, idxs2=None, fps=100, dt
     B = stimulus.shape[0]
     state1 = model1.steady_state(t_pre=1.0, dt=dt, batch_size=B)
     model1.stimulus.zero()
-    stim1 = Stimulus(model1.connectome, B, fps)
+    stim1 = Stimulus(model1.connectome, B, stimulus.shape[1])
     stim1.add_input(stimulus)
     act1 = model1(stim1(), dt=dt, state=state1)[:, :, idxs1]
     if model2 is None:
         return act1
     state2 = model2.steady_state(t_pre=1.0, dt=dt, batch_size=B)
     model2.stimulus.zero()
-    stim2 = Stimulus(model2.connectome, B, fps)
+    stim2 = Stimulus(model2.connectome, B, stimulus.shape[1])
     stim2.add_input(stimulus)
     act2 = model2(stim2(), dt=dt, state=state2)[:, :, idxs2]
     return torch.cat((act1, act2), dim=-1)

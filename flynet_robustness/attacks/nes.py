@@ -7,10 +7,10 @@ from ..config import DEFAULT_STIMULUS
 from ..decoders import to_logits
 from ..hex_eye import BoxEye
 from ..textures import get_texture
-from .common import amp_dtype, build_out_dir, decode_logits, save_json, save_texture_gray
+from .common import amp_dtype, build_out_dir, decode_logits, flip_rates, save_json, save_texture_gray
 
 
-def run_nes(net, decoder, network_id="FlyNet", steps=100, lr=1e-1, tex_res=128, sigma=1e-2,
+def run_nes(net, decoder, network_id="FlyNet", steps=100, lr=1.0, tex_res=128, sigma=1e-2,
             n_samples=15, base_kwargs=None, save_every=10, texttype="Black", run_id=1,
             device="cuda", extent=15):
     """Estimate the gradient with symmetric Gaussian perturbations and ascend the loss."""
@@ -29,7 +29,7 @@ def run_nes(net, decoder, network_id="FlyNet", steps=100, lr=1e-1, tex_res=128, 
 
     with torch.inference_mode():
         _, logits0 = loss_logits(x)
-        correct = (logits0 > 0).float()
+        correct = logits0 > 0
 
     loss_history = []
     for step in tqdm(range(1, steps + 1)):
@@ -46,9 +46,7 @@ def run_nes(net, decoder, network_id="FlyNet", steps=100, lr=1e-1, tex_res=128, 
         with torch.inference_mode():
             x.add_(lr * grad)
             loss, logits = loss_logits(x)
-            pred = (logits > 0).float()
-            flip = ((pred != 1) & (correct == 1)).float().mean().item()
-        loss_history.append({"step": step, "loss": float(loss), "label_flip": flip})
+            loss_history.append({"step": step, "loss": float(loss), **flip_rates(logits, correct)})
         if step % save_every == 0 or step == 1:
             save_texture_gray(x, out_dir / "snapshots" / f"step_{step:04d}_gray.png")
             torch.save(x.detach().cpu(), out_dir / "snapshots" / f"step_{step:04d}.pt")

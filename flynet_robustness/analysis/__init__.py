@@ -1,5 +1,5 @@
-"""Neural analyses: recurrence, locality, representational similarity, decoding."""
+"""Neural analyses: recurrence, locality, representational similarity, decoding, illusion."""
 
-from . import decoding, locality, recurrence, representational
+from . import decoding, illusion, locality, recurrence, representational
 
-__all__ = ["recurrence", "locality", "representational", "decoding"]
+__all__ = ["recurrence", "locality", "representational", "decoding", "illusion"]

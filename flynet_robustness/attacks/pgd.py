@@ -7,7 +7,7 @@ from ..config import DEFAULT_STIMULUS
 from ..decoders import to_logits
 from ..hex_eye import BoxEye
 from ..textures import get_texture
-from .common import amp_dtype, build_out_dir, decode_logits, save_json, save_texture_gray
+from .common import amp_dtype, build_out_dir, decode_logits, flip_rates, save_json, save_texture_gray
 
 
 def _random_start(x0, eps, norm):
@@ -49,6 +49,8 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
         return logits, criterion(logits, target), target
 
     save_texture_gray(x0, out_dir / "snapshots" / "step_0000_gray.png")
+    with torch.no_grad():
+        correct = loss_of(x0)[0] > 0
     loss_history, best_x, best_loss = [], None, -float("inf")
 
     for restart in range(n_restarts):
@@ -59,7 +61,7 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
 
         for step in tqdm(range(1, steps + 1), desc=f"restart {restart + 1}/{n_restarts}"):
             x.requires_grad_(True)
-            logits, loss, target = loss_of(x)
+            logits, loss, _ = loss_of(x)
             if x.grad is not None:
                 x.grad.zero_()
             loss.backward()
@@ -84,10 +86,8 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
                     else:
                         best_ckpt_loss, best_ckpt_x = loss_true.item(), x.clone()
 
-                pred = (logits > 0).float()
-                label_flip = (pred != target).float().mean().item()
-            loss_history.append({"restart": restart, "step": step,
-                                 "loss": float(loss.detach()), "label_flip": label_flip})
+            loss_history.append({"restart": restart, "step": step, "loss": float(loss.detach()),
+                                 **flip_rates(logits.detach(), correct)})
             x = x.detach()
 
             if step % save_every == 0 or step == 1:
