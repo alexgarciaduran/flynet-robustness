@@ -10,6 +10,9 @@ checkpoints/
   gCNN_2_frames/network.chkpt      # state_dict key: "state_dict"
 ```
 
+The gCNN checkpoint also stores `early_conv.*` / `late_conv.*` aliases of `conv.*`;
+the loader keeps only the keys the model declares.
+
 RAFT weights go in `../models/` as `raft-small.pth` / `raft-sintel.pth`; RAFT-S (hex-sampled
 Sintel) as `raft-sintel-flyvis-split-hex-lum-gridflow-256-bs8-50k_20260615-124452.pth`.
 FlyNet / CTRNN weights are managed by flyvis (see `scripts/download_assets.py`).

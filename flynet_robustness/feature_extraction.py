@@ -41,11 +41,15 @@ def load_cnn_network(network_id="RAFT_12", device="cuda"):
             def __contains__(self, key):
                 return hasattr(self, key)
 
-        model = RAFT(Args(s["small"]))
-        state = torch.load(Args(s["small"]).model, map_location=device, weights_only=False)
+        args = Args(s["small"])
+        model = RAFT(args)
+        state = torch.load(args.model, map_location=device, weights_only=False)
         state = state.get("state_dict", state)
         model.load_state_dict({k.replace("module.", ""): v for k, v in state.items()})
-        return model.eval().to(device)
+        model = model.eval().to(device)
+        for p in model.parameters():  # attacks only need gradients w.r.t. the input
+            p.requires_grad_(False)
+        return model
 
     n_frames = s["n_frames"]
     if kind == "gcnn":
@@ -59,7 +63,12 @@ def load_cnn_network(network_id="RAFT_12", device="cuda"):
 
     state = torch.load(config.checkpoint_path(network_id), map_location="cpu",
                        weights_only=False)[s["state_key"]]
-    model.load_state_dict(state)
+    # The gCNN checkpoint also stores the early_conv/late_conv aliases of `conv`.
+    expected = model.state_dict()
+    missing = [k for k in expected if k not in state]
+    if missing:
+        raise KeyError(f"{network_id} checkpoint is missing {len(missing)} keys, e.g. {missing[:3]}")
+    model.load_state_dict({k: state[k] for k in expected})
     return extractor(model.eval()).eval().to(device)
 
 
@@ -101,6 +110,7 @@ def extract_features(model, hex_frames, network_id="RAFTsmall"):
     img1, img2 = frames[:-1], frames[1:]
     outputs = []
     for i in range(0, img1.shape[0], chunk):
-        net = checkpoint(_raft_forward, model, img1[i:i + chunk], img2[i:i + chunk], n_iters)
+        net = checkpoint(_raft_forward, model, img1[i:i + chunk], img2[i:i + chunk], n_iters,
+                         use_reentrant=False)
         outputs.append(avg_pool(net))
     return None, torch.cat(outputs, dim=0), None

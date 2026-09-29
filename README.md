@@ -39,7 +39,7 @@ Environment-specific dependencies (install separately):
 
 | Dependency | Purpose | Link |
 |---|---|---|
-| `pytorch3d` | differentiable 3D rendering | https://github.com/facebookresearch/pytorch3d |
+| `pytorch3d` | differentiable 3D rendering (Linux only) | https://github.com/facebookresearch/pytorch3d |
 | `flyvis` | FlyNet / CTRNN | https://github.com/TuragaLab/flyvis |
 | RAFT | optical-flow baseline (on `PYTHONPATH`) | https://github.com/princeton-vl/RAFT |
 
@@ -114,7 +114,7 @@ from flynet_robustness.textures import get_texture
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model1, model2, idxs1, idxs2 = get_flynet("FlyNet", device=device)
-decoder = load_decoder("FlyNet")
+decoder = load_decoder("FlyNet", device=device)
 
 activity, *_ = get_stimulus_and_return_activity(
     model1, idxs1, model2, idxs2, hit=True, shape="Sphere",

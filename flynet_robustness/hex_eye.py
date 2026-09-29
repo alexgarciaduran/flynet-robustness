@@ -45,12 +45,20 @@ class BoxEye:
         self.conv.weight.requires_grad = False
         self.conv.bias.requires_grad = False
 
+    def _align(self, sequence: torch.Tensor) -> None:
+        """Move the box filter to the sequence's device/dtype (kept across calls)."""
+        w = self.conv.weight
+        if w.device != sequence.device or w.dtype != sequence.dtype:
+            self.conv = self.conv.to(device=sequence.device, dtype=sequence.dtype)
+            self.receptor_centers = self.receptor_centers.to(sequence.device)
+
     def __call__(self, sequence: torch.Tensor,
                  ftype: Literal["mean", "sum"] = "mean",
                  hex_sample: bool = True) -> torch.Tensor:
         """Apply the box kernel to (samples, frames, H, W) sequences."""
         if not isinstance(sequence, torch.Tensor):
             sequence = torch.as_tensor(sequence, dtype=torch.float32)
+        self._align(sequence)
         samples, frames, h, w = sequence.shape
         if (self.min_frame_size > torch.tensor([h, w])).any():
             sequence = ttf.resize(sequence, self.min_frame_size.tolist())
@@ -76,6 +84,7 @@ class BoxEye:
         if (self.min_frame_size > torch.tensor([h, w])).any():
             sequence = ttf.resize(sequence, self.min_frame_size.tolist())
             h, w = sequence.shape[2:]
-        c = self.receptor_centers + torch.tensor([h // 2, w // 2])
+        c = self.receptor_centers.to(sequence.device) + torch.tensor(
+            [h // 2, w // 2], device=sequence.device)
         out = sequence[:, :, c[:, 0], c[:, 1]].clone()
         return out.view(*sequence.shape[:2], 1, -1).contiguous()

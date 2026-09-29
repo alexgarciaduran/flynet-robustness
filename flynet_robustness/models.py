@@ -11,6 +11,12 @@ from .hex_eye import BoxEye
 from .rendering import generate_looming_stimulus
 
 
+def _model_device(model):
+    for t in list(model.parameters()) + list(model.buffers()):
+        return t.device
+    return None
+
+
 def _motion_indices(connectome, cell_types=MOTION_CELL_TYPES):
     return np.concatenate([connectome.nodes.layer_index[ct.decode()]
                            for ct in connectome.unique_cell_types
@@ -32,6 +38,9 @@ def get_flynet(network_id="FlyNet", device="cuda"):
 
 def forward_flynet(stimulus, model1, idxs1, model2=None, idxs2=None, fps=100, dt=0.01):
     """Run one or two networks on a hex stimulus; concatenate decoded activity."""
+    device = _model_device(model1)
+    if device is not None and stimulus.device != device:
+        stimulus = stimulus.to(device)
     B = stimulus.shape[0]
     state1 = model1.steady_state(t_pre=1.0, dt=dt, batch_size=B)
     model1.stimulus.zero()

@@ -17,7 +17,6 @@ def trial_similarity(activity):
     activity: list of M arrays (T_k, N). Returns (population (M,M),
     neuron (N, M, M)).
     """
-    M = len(activity)
     N = activity[0].shape[1]
     X = np.stack([np.asarray(a).mean(axis=0) for a in activity])  # (M, N)
     population = cosine_similarity_matrix(X)

@@ -48,12 +48,17 @@ class PositionDecoder(nn.Module):
         return self.network(x)
 
 
-def load_decoder(network_id="FlyNet", path=None):
-    """Load the hit/miss classifier for a network as a frozen TorchMLP."""
+def load_decoder(network_id="FlyNet", path=None, device=None):
+    """Load the hit/miss classifier for a network as a frozen TorchMLP.
+
+    `device` must match the device the activity lives on; None keeps torch's
+    default (importing flyvis sets it to cuda).
+    """
     path = path or config.decoder_path(network_id, "hit")
     with open(path, "rb") as f:
         pipeline = pickle.load(f)
-    return TorchMLP(pipeline)
+    model = TorchMLP(pipeline).eval()
+    return model if device is None else model.to(device)
 
 
 def load_decoder_pos_vel(network_id="FlyNet", load_velocity=True, input_dim=5768,

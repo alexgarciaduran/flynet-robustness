@@ -46,7 +46,10 @@ def apply_fog(x, background_val=0.5, contrast_scale=1.0):
 
 
 def motion_jitter(frames, max_shift=5, seed=None, device="cpu"):
-    """Random per-frame integer shift on raw RGB frames (T,H,W,C), edge-padded."""
+    """Random per-frame integer shift on raw RGB frames (T,H,W,C), edge-padded.
+
+    The shifts are drawn on `device` so the generator and the draw always match.
+    """
     if not (frames.ndim == 4 and frames.shape[-1] in (1, 3)):
         raise ValueError("motion_jitter expects raw frames (T,H,W,C)")
     T, H, W, _ = frames.shape
@@ -54,8 +57,8 @@ def motion_jitter(frames, max_shift=5, seed=None, device="cpu"):
     if seed is not None:
         gen.manual_seed(seed)
     out = torch.ones_like(frames) * 0.5
-    sh = torch.randint(-max_shift, max_shift + 1, (T,), generator=gen)
-    sw = torch.randint(-max_shift, max_shift + 1, (T,), generator=gen)
+    sh = torch.randint(-max_shift, max_shift + 1, (T,), generator=gen, device=device)
+    sw = torch.randint(-max_shift, max_shift + 1, (T,), generator=gen, device=device)
     for t in range(T):
         h, w = sh[t].item(), sw[t].item()
         out[t, max(0, h):min(H, H + h), max(0, w):min(W, W + w)] = \
@@ -74,7 +77,8 @@ def _is_raft(network_id):
 def _render(tex_logits, base_kwargs):
     from .rendering import generate_looming_stimulus
     tex = torch.sigmoid(tex_logits)
-    frames_gray, frames_rgb, _, _, position = generate_looming_stimulus(texture=tex, **base_kwargs)
+    kwargs = dict(base_kwargs, return_rgb=True)  # RGB frames are needed for RAFT and jitter
+    frames_gray, frames_rgb, _, _, position = generate_looming_stimulus(texture=tex, **kwargs)
     return frames_gray, frames_rgb, position
 
 

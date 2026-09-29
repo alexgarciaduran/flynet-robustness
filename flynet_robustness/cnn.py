@@ -43,9 +43,9 @@ class RegularHexToCartesianMap(nn.Module):
 
     def forward(self, x):
         n, f, c, _ = x.shape
-        out = torch.zeros([n, f, c, self.H, self.W])
+        out = torch.zeros([n, f, c, self.H, self.W], device=x.device, dtype=x.dtype)
         out[:, :, :, self.u, self.v] = x
-        return out.squeeze_(dim=2)
+        return out.squeeze(dim=2)
 
 
 class CartesianMapToRegularHex(nn.Module):

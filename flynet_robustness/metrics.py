@@ -4,13 +4,18 @@ import numpy as np
 
 from .config import flops as _flops
 
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz  # numpy < 2.0
+
 
 def robustness(eps, accuracy):
     """Robustness R: mean accuracy over the swept perturbation range (AUC)."""
     eps = np.asarray(eps, dtype=float)
     order = np.argsort(eps)
     acc = np.asarray(accuracy, dtype=float)[order]
-    return np.trapezoid(acc, eps[order]) / (eps.max() - eps.min())
+    span = eps.max() - eps.min()
+    if span == 0:
+        return float(acc.mean())
+    return _trapezoid(acc, eps[order]) / span
 
 
 def bootstrap_robustness(eps, accuracy_matrix, n_boot=1000, seed=None):

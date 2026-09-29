@@ -4,12 +4,15 @@ Runs without flyvis / PyTorch3D / RAFT. Exercises the registry, textures,
 metrics, perturbation ops, plotting, training and neural analyses.
 """
 
+import os
+import sys
 import warnings
 
 import matplotlib
 import numpy as np
 import torch
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 matplotlib.use("Agg")
 warnings.filterwarnings("ignore")
 

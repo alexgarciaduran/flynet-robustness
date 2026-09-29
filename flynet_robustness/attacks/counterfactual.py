@@ -70,7 +70,7 @@ def counterfactual_restoration(net, decoder, network_id="FlyNet", steps=250, lr=
             torch.save(w.detach().cpu(), f"{out_dir}/{texttype}_illusion_{step:04d}.pt")
             save_texture_gray(w, f"{out_dir}/{texttype}_illusion_{step:04d}_gray.png")
 
-        def log(w, logits, activity, loss):
+        def _log(w, logits, activity, loss):
             row = {"step": len(rows) + 1, "loss": loss, "p_hit": torch.sigmoid(logits).mean().item()}
             if pos_vel is not None:
                 pos = position.to(activity)
@@ -82,6 +82,7 @@ def counterfactual_restoration(net, decoder, network_id="FlyNet", steps=250, lr=
                 snapshot(w, row["step"])
                 save_json(rows, f"{out_dir}/{texttype}_loss_history.json")
 
+        log = _log
         snapshot(w_base, 0)
 
     illusion, hist1 = _optimise(w_base, w_base, 0, net, decoder, network_id, base_kwargs,

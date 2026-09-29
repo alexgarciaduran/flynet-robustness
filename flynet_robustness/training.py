@@ -23,13 +23,16 @@ from .decoders import PositionDecoder
 def _split_by_trial(activity_all, labels, test_size=0.05, seed=1):
     """Split trials into train/test, expanding each trial over its timepoints."""
     rng = np.random.default_rng(seed)
+    n_trials = len(activity_all)
+    n_test = min(max(1, int(round(test_size * n_trials))), n_trials - 1)
+    test_trials = set(rng.choice(n_trials, size=n_test, replace=False).tolist())
     Xtr, ytr, Xte, yte, idx_te = [], [], [], [], []
     trial = 0
-    for act, lab in zip(activity_all, labels):
+    for k, (act, lab) in enumerate(zip(activity_all, labels)):
         a = act[0] if act.ndim == 3 else act
         n = a.shape[0]
         y = np.full(n, lab)
-        if rng.random() < test_size:
+        if k in test_trials:
             Xte.append(np.asarray(a)); yte.append(y); idx_te.append(np.arange(trial, trial + n))
         else:
             Xtr.append(np.asarray(a)); ytr.append(y)

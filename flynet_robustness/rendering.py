@@ -98,6 +98,20 @@ def create_sphere(device="cpu", level=3):
     return verts, faces, uv, faces_uvs, True
 
 
+def create_tetrahedron(device="cpu"):
+    device = torch.device(device)
+    h = float(np.sqrt(2.0 / 3.0))
+    verts = torch.tensor([[0.0, 0.0, h / 2], [0.0, 0.5, -h / 2],
+                          [-0.5, -0.5, -h / 2], [0.5, -0.5, -h / 2]],
+                         dtype=torch.float32, device=device)
+    faces = torch.tensor([[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]],
+                         dtype=torch.int64, device=device)
+    verts_uvs = torch.tensor([[0, 0], [1, 0], [0.5, 1]] * 4,
+                             dtype=torch.float32, device=device)
+    faces_uvs = torch.arange(12, dtype=torch.int64, device=device).view(4, 3)
+    return verts, faces, verts_uvs, faces_uvs
+
+
 def create_cube(device="cpu"):
     verts = torch.tensor([[-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
                           [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1]],
@@ -135,6 +149,8 @@ def build_stimulus(shape, rotation, texture, device="cpu"):
         verts, faces, verts_uvs, faces_uvs, needs_tile_u = create_sphere(device)
     elif shape == "Cube":
         verts, faces, verts_uvs, faces_uvs = create_cube(device)
+    elif shape == "Tetrahedron":
+        verts, faces, verts_uvs, faces_uvs = create_tetrahedron(device)
     elif shape in _MESH2D:
         verts, faces, verts_uvs, faces_uvs = _MESH2D[shape](device=device)
     else:
