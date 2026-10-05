@@ -27,11 +27,20 @@ def seed_everything(seed=42):
 
 
 def save_simulations(model1, idxs1, model2=None, idxs2=None, config_path=None,
-                     out_dir="simulations", device="cpu", out_size=416, test=False):
-    """Render the fixed trajectory set, run the network and save activity + positions."""
+                     out_dir="simulations", device="cpu", out_size=416, test=False,
+                     save_every=500):
+    """Render the fixed trajectory set, run the network and save activity + positions.
+
+    Writes partial results every `save_every` trials so a killed job is resumable.
+    """
     np.random.seed(1 if test else 0)
     data = torch.load(config_path, weights_only=False)
     os.makedirs(out_dir, exist_ok=True)
+    suffix = "_test" if test else ""
+
+    def dump():
+        torch.save({"network_activity_all": activity_all}, f"{out_dir}/activity{suffix}.pt")
+        torch.save({"positions": positions}, f"{out_dir}/positions{suffix}.pt")
 
     activity_all, positions = [], []
     for sim in tqdm(range(len(data["shape_all"]))):
@@ -47,10 +56,10 @@ def save_simulations(model1, idxs1, model2=None, idxs2=None, config_path=None,
                 stop_margin_hit=_STOP_MARGIN[shape], image_size=out_size)
         activity_all.append(activity.cpu())
         positions.append(position)
+        if save_every and sim and sim % save_every == 0:
+            dump()
 
-    suffix = "_test" if test else ""
-    torch.save({"network_activity_all": activity_all}, f"{out_dir}/activity{suffix}.pt")
-    torch.save({"positions": positions}, f"{out_dir}/positions{suffix}.pt")
+    dump()
     return activity_all, positions
 
 
