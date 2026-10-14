@@ -1,4 +1,3 @@
-# Core scientific stack
 numpy
 scipy
 scikit-learn
@@ -7,13 +6,8 @@ matplotlib
 seaborn
 imageio
 tqdm
-h5py        # scripts/download_assets.py (flyvis validation files)
-
-# Deep learning (install a build matching your CUDA/CPU setup)
+h5py
 torch
 torchvision
 
-# Environment-specific, install separately (see README):
-#   pytorch3d   -> differentiable 3D rendering   https://github.com/facebookresearch/pytorch3d
-#   flyvis      -> FlyNet / CTRNN                 https://github.com/TuragaLab/flyvis
-#   RAFT        -> optical-flow baseline (repo checkout on PYTHONPATH)
+# install separately: pytorch3d, flyvis, a RAFT checkout on PYTHONPATH
