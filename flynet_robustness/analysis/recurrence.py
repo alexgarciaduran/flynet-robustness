@@ -1,4 +1,6 @@
-"""Structural and weighted recurrence of connectivity matrices."""
+"""
+@author: alexgarciaduran
+"""
 
 from collections import deque
 
@@ -7,18 +9,27 @@ from scipy.sparse import csr_matrix, issparse
 from scipy.sparse.csgraph import connected_components, dijkstra
 
 
-def weight_matrix_from_network(network, signed=True):
-    """Dense weight matrix W[i,j] from a flyvis network connectome."""
+def weight_matrix_from_network(network, signed=True, sparse=True):
+    """Weight matrix W[i,j] from a flyvis connectome.
+
+    Sparse by default: dense would be ~8 GB for 45,669 neurons. Every function
+    here takes either form.
+    """
     params = network._param_api()
     nodes = network.connectome.nodes.to_df()
     edges = network.connectome.edges.to_df()
-    W = np.zeros([len(nodes), len(nodes)], dtype=np.float32)
     if signed:
         w = params.edges.sign * params.edges.syn_count * params.edges.syn_strength
     else:
         w = params.edges.weight
-    W[edges.source_index, edges.target_index] = w.detach().cpu().numpy()
-    return W
+    w = w.detach().cpu().numpy().astype(np.float32)
+    n = len(nodes)
+    if not sparse:
+        W = np.zeros([n, n], dtype=np.float32)
+        W[edges.source_index, edges.target_index] = w
+        return W
+    return csr_matrix((w, (np.asarray(edges.source_index), np.asarray(edges.target_index))),
+                      shape=(n, n))
 
 
 def _bfs_distances(indptr, indices, source, n):

@@ -1,4 +1,6 @@
-"""Representational similarity (cosine) and PCA of population activity."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 from sklearn.decomposition import PCA

@@ -1,4 +1,6 @@
-"""Position/velocity decoding analyses."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 

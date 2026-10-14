@@ -1,20 +1,18 @@
-"""Central network registry, cost tables, paths and plotting metadata.
-
-Readable network ids are the public API everywhere (models, decoders,
-attacks, plotting). Each id maps to a spec holding the internal loading
-details (flyvis id or checkpoint path, input frame count, state-dict key),
-its cost, and its display label/color.
+"""
+@author: alexgarciaduran
 """
 
 import os
 
-# Motion cell types decoded from FlyNet/CTRNN (T4/T5, 5768 units).
+# T4/T5, the 5768 units the decoders read.
 MOTION_CELL_TYPES = ["T4a", "T4b", "T4c", "T4d", "T5a", "T5b", "T5c", "T5d"]
 
-# Base directories (override via environment variables).
+# Overridable with the matching environment variables.
 CHECKPOINT_DIR = os.environ.get("FLYNET_CHECKPOINTS", "checkpoints")
 DECODER_DIR = os.environ.get("FLYNET_DECODERS", "decoders")
 RAFT_MODEL_DIR = os.environ.get("FLYNET_RAFT_MODELS", "models")
+# Root for the PGD/ CW/ NES/ Transfer/ output trees.
+RESULTS_DIR = os.environ.get("FLYNET_RESULTS", ".")
 
 
 def _cnn(n_frames, state_key, flops, params, label, color):
@@ -27,43 +25,53 @@ def _raft(iters, small, flops, params, label, color, kind="raft", ckpt=None):
                 flops=flops, params=params, label=label, color=color)
 
 
-# RAFT-S: RAFT trained on hex-sampled Sintel luminance (FlyNet's 721-column input).
+# RAFT trained on hex-sampled Sintel, i.e. FlyNet's 721-column input.
 RAFT_HEX_CKPT = "raft-sintel-flyvis-split-hex-lum-gridflow-256-bs8-50k_20260615-124452.pth"
 
 
 # --- Network registry -------------------------------------------------------
-# id -> spec. `flyvis` = flyvis network id; `state_key` = key in the CNN
-# checkpoint dict; `legacy` = old identifier for backward-compatible paths.
+# `state_key`: key in the CNN checkpoint. `legacy`: old id, for old paths.
+# `flops`: torch.profiler count over a 100-frame video, as the exact integer
+# the reported LERS was computed from.
 NETWORKS = {
     "FlyNet": dict(kind="flynet", flyvis="flow/0000/synthesized_t4d", n_frames=None,
-                   flops=1.863e8, params=734, label="FlyNet", color="forestgreen",
+                   flops=186_317_862, params=734, label="FlyNet", color="forestgreen",
                    legacy="_synthesized_model"),
     "CTRNN": dict(kind="flynet", flyvis="flow/0003/000", n_frames=None,
-                  flops=7.832e8, params=11593, label="CTRNN", color="yellowgreen",
+                  flops=783_232_600, params=11593, label="CTRNN", color="yellowgreen",
                   legacy="no_connectome"),
-    # CTRNN pruned to FlyNet's 1,513,231 edges; FLOPs scale with edges -> FlyNet's.
+    # CTRNN pruned to FlyNet's edge count.
     "sCTRNN": dict(kind="flynet", flyvis="flow/0215_pruned_current_ft_compact/000", n_frames=None,
-                   flops=1.863e8, params=None, label="sCTRNN", color="olivedrab",
+                   flops=183_291_400, params=None, label="sCTRNN", color="olivedrab",
                    legacy="_pruned_ctrnn"),
-    # Degree-matched (locality-preserving rewired) FlyNet controls, 0 = best task error.
+    # Rewired FlyNet controls: FlyNet's nodes and edge count, 0 = best task error.
     **{f"flynet_degree_matched_{i}": dict(kind="flynet", flyvis=f"flow/0301_best10/{i:03d}",
-                                          n_frames=None, flops=1.863e8, params=734,
+                                          n_frames=None, flops=186_317_862, params=734,
                                           label=f"FlyNet-DM{i}", color="mediumseagreen")
        for i in range(10)},
-    "vCNN_2_frames": _cnn(2, "state_dict", 7.879e10, 414064, "vCNN", "royalblue"),
-    "vCNN_5_frames": _cnn(5, "network", 7.56e10, 414224, "vCNN (5f)", "cornflowerblue"),
-    "vCNN_10_frames": _cnn(10, "network", 7.17e10, 414624, "vCNN (10f)", "mediumblue"),
+    "vCNN_2_frames": _cnn(2, "state_dict", 78_787_269_792, 414064, "vCNN", "royalblue"),
+    "vCNN_5_frames": _cnn(5, "network", 75_621_474_400, 414224, "vCNN (5f)", "cornflowerblue"),
+    "vCNN_10_frames": _cnn(10, "network", 71_669_073_600, 414624, "vCNN (10f)", "mediumblue"),
     "gCNN_2_frames": dict(kind="gcnn", n_frames=2, state_key="state_dict",
-                          flops=7.880e10, params=414064, label="gCNN", color="lightblue"),
-    "RAFTsmall": _raft(12, True, 6.138e12, 1_000_000, "RAFTsmall", "darkorange"),
-    "RAFT_1": _raft(1, False, 9.029e12, 5_257_512, "RAFT-1", "lightcoral"),
-    "RAFT_6": _raft(6, False, 1.738e13, 5_257_512, "RAFT-6", "chocolate"),
-    "RAFT_12": _raft(12, False, 2.740e13, 5_257_512, "RAFT-12", "crimson"),
+                          flops=78_796_022_580, params=414064, label="gCNN", color="lightblue"),
+    "RAFTsmall": _raft(12, True, 6_138_082_963_584, 1_000_000, "RAFTsmall", "darkorange"),
+    "RAFT_1": _raft(1, False, 9_028_616_186_304, 5_257_512, "RAFT-1", "lightcoral"),
+    "RAFT_6": _raft(6, False, 17_380_072_854_144, 5_257_512, "RAFT-6", "chocolate"),
+    "RAFT_12": _raft(12, False, 27_401_820_855_552, 5_257_512, "RAFT-12", "crimson"),
     **{f"RAFT_{i}_S": _raft(i, False, f, 5_257_512, f"RAFT-{i}-S", c, kind="raft_hex", ckpt=RAFT_HEX_CKPT)
-       for i, f, c in [(1, 3.332e12, "plum"), (6, 6.495e12, "orchid"), (12, 1.029e13, "darkviolet")]},
+       for i, f, c in [(1, 3_331_921_342_464, "plum"), (6, 6_494_603_157_504, "orchid"),
+                       (12, 10_289_821_335_552, "darkviolet")]},
 }
 
-# Old id -> readable id, for migrating existing paths/results.
+# Benchmarked networks, in reporting order.
+PAPER_NETWORKS = [
+    "FlyNet", "sCTRNN", "CTRNN",
+    "vCNN_2_frames", "vCNN_5_frames", "vCNN_10_frames", "gCNN_2_frames",
+    "RAFTsmall", "RAFT_1", "RAFT_6", "RAFT_12",
+    "RAFT_1_S", "RAFT_6_S", "RAFT_12_S",
+]
+
+# Old id -> readable id.
 LEGACY_IDS = {
     "flynet_synthesized": "FlyNet", "flynet_no_connectome": "CTRNN",
     "flynet_pruned_ctrnn": "sCTRNN",
@@ -83,6 +91,32 @@ def spec(network_id):
     if network_id in LEGACY_IDS:
         return NETWORKS[LEGACY_IDS[network_id]]
     raise KeyError(f"Unknown network id: {network_id}. Known: {list(NETWORKS)}")
+
+
+def canonical(network_id):
+    """Readable id for a readable or legacy id (the one used in paths/plots)."""
+    if network_id in NETWORKS:
+        return network_id
+    s = spec(network_id)
+    return next(k for k, v in NETWORKS.items() if v is s)
+
+
+def legacy_dir_name(network_id):
+    """Result-tree folder name used by the original scripts: the legacy id,
+    prefixed by ``cnn_`` for everything but the flyvis networks."""
+    cid = canonical(network_id)
+    old = next((k for k, v in LEGACY_IDS.items() if v == cid), None)
+    if old is None:
+        return cid
+    return old if NETWORKS[cid]["kind"] == "flynet" else f"cnn_{old}"
+
+
+def resolve_networks(names):
+    """Expand a list of ids; 'all' means PAPER_NETWORKS."""
+    out = []
+    for name in names:
+        out += PAPER_NETWORKS if name == "all" else [canonical(name)]
+    return list(dict.fromkeys(out))
 
 
 def kind(network_id):
@@ -129,16 +163,14 @@ def checkpoint_path(network_id):
     if s["kind"] in ("raft", "raft_hex"):
         fname = s["ckpt"] or ("raft-small.pth" if s["small"] else "raft-sintel.pth")
         return os.path.join(RAFT_MODEL_DIR, fname)
-    canonical = next(k for k, v in NETWORKS.items() if v is s)
-    return os.path.join(CHECKPOINT_DIR, canonical, "network.chkpt")
+    return os.path.join(CHECKPOINT_DIR, canonical(network_id), "network.chkpt")
 
 
 def decoder_path(network_id, kind_="hit", base=None):
     """Readable decoder path; falls back to the legacy layout if present."""
     base = base or DECODER_DIR
-    canonical = next(k for k, v in NETWORKS.items() if v is spec(network_id))
     ext = "pkl" if kind_ == "hit" else "pth"
-    path = os.path.join(base, canonical, f"{kind_}.{ext}")
+    path = os.path.join(base, canonical(network_id), f"{kind_}.{ext}")
     if os.path.exists(path):
         return path
     legacy = _legacy_decoder_path(network_id, kind_)
@@ -162,7 +194,7 @@ def _legacy_decoder_path(network_id, kind_="hit"):
     return None
 
 
-# Input dimensionality (columns / pixels) per network, for noise normalization.
+# Input size per network, used to scale the noise.
 INPUT_DIM = {"flynet": 721, "cnn": 721, "gcnn": 721, "raft": 416 ** 2, "raft_hex": 721}
 
 
@@ -170,7 +202,7 @@ def input_dim(network_id):
     return INPUT_DIM[kind(network_id)]
 
 
-# Perturbation name -> (axis label, magnitude key in result dicts).
+# Perturbation -> (axis label, magnitude key).
 PERTURBATION_AXIS = {
     "AWN_texture": (r"Noise strength, $\sigma$", "sigma"),
     "AWN_frames": (r"Noise strength, $\sigma$", "sigma"),
@@ -180,7 +212,7 @@ PERTURBATION_AXIS = {
     "Motion_jitter": (r"Jitter, $j$", "jitter"),
 }
 
-# Default looming stimulus for attacks / perturbations.
+# Default looming stimulus.
 DEFAULT_STIMULUS = dict(
     hit=True, radius=4.0, shape="Sphere", theta=0, time=1, fps=100,
     stop_margin_hit=0.6, z0=15, out_size=416, return_rgb=True,

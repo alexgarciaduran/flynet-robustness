@@ -11,6 +11,8 @@ build/
 PGD/
 CW/
 NES/
+Transfer/
+results/
 figures/
 gifs/
 simulations/*/

@@ -1,7 +1,5 @@
-"""Common video perturbations and stimulus->model-input helpers.
-
-Raw perturbation ops are pure torch. Rendering wrappers import the PyTorch3D
-pipeline lazily so this module stays importable without a renderer.
+"""
+@author: alexgarciaduran
 """
 
 import torch

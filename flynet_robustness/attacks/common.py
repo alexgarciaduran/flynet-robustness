@@ -1,4 +1,6 @@
-"""Shared utilities for adversarial attacks (forward, IO)."""
+"""
+@author: alexgarciaduran
+"""
 
 import json
 from datetime import datetime
@@ -18,10 +20,27 @@ def _eps_dir(eps):
     return f"eps_{eps:.0e}" if eps < 1e-2 else f"eps_{eps:g}"
 
 
+def run_dir(root, texttype, network_id, norm, eps, run_id, existing=False):
+    """$FLYNET_RESULTS/root/texttype/network/norm/eps/run_id.
+
+    existing=True (readers) falls back to the original scripts' folder name.
+    """
+    def path(name):
+        return (Path(config.RESULTS_DIR) / root / texttype / name
+                / norm / _eps_dir(eps) / f"run_{run_id}")
+
+    out = path(config.canonical(network_id))
+    if existing and not out.exists():
+        legacy = path(config.legacy_dir_name(network_id))
+        if legacy.exists():
+            return legacy
+    return out
+
+
 def build_out_dir(root, texttype, network_id, norm, eps, run_id=None):
     """Structured output directory: root/texttype/network/norm/eps/run_id."""
     run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(root) / texttype / network_id / norm / _eps_dir(eps) / f"run_{run_id}"
+    out_dir = run_dir(root, texttype, network_id, norm, eps, run_id)
     (out_dir / "snapshots").mkdir(parents=True, exist_ok=True)
     return out_dir
 
@@ -31,7 +50,7 @@ def final_values(root, texttype, network_id, norm, values, runs, key="avg_flip_c
     out = np.full((len(values), runs), np.nan)
     for i, v in enumerate(values):
         for r in range(runs):
-            f = Path(root) / texttype / network_id / norm / _eps_dir(v) / f"run_{r + 1}" / "loss_history.pt"
+            f = run_dir(root, texttype, network_id, norm, v, r + 1, existing=True) / "loss_history.pt"
             if f.exists():
                 last = {e.get("restart", 0): e for e in torch.load(f, map_location="cpu", weights_only=False)}
                 out[i, r] = max(last.values(), key=lambda e: e["avg_flip_correct_initially"])[key]
@@ -40,11 +59,7 @@ def final_values(root, texttype, network_id, norm, values, runs, key="avg_flip_c
 
 def decode_logits(tex_logits, net, decoder, network_id, base_kwargs, renderer_hex,
                   amp_dtype=torch.float16, return_activity=False):
-    """Texture logits -> decoder logits, through the appropriate network.
-
-    net is (model1, idxs1, model2, idxs2) for FlyNet/CTRNN, else a CNN/RAFT
-    feature-extractor module.
-    """
+    """Texture logits -> decoder logits, through the given network."""
     hex_batch = texture_to_hex_batch(tex_logits, base_kwargs, renderer_hex, network_id=network_id)
     if not config.is_cnn(network_id):
         model1, idxs1, model2, idxs2 = net
@@ -74,9 +89,18 @@ def save_texture_gray(tex_logits, png_path):
     plt.imsave(png_path, gray, cmap="gray", vmin=0, vmax=1)
 
 
+def _jsonable(o):
+    """numpy scalars -> python numbers, so stimulus kwargs round-trip through JSON."""
+    if isinstance(o, np.generic):
+        return o.item()
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    raise TypeError(f"not JSON serialisable: {type(o).__name__}")
+
+
 def save_json(obj, path):
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
+        json.dump(obj, f, ensure_ascii=False, indent=2, default=_jsonable)
 
 
 def amp_dtype():

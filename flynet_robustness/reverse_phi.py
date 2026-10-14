@@ -1,4 +1,6 @@
-"""Reverse-phi illusion: contrast inversion every T frames."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 import torch

@@ -1,4 +1,6 @@
-"""Projected Gradient Descent attack on the object texture (APGD-style)."""
+"""
+@author: alexgarciaduran
+"""
 
 import torch
 from tqdm import tqdm
@@ -31,9 +33,14 @@ def _project(x, x0, eps, norm):
 
 def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, eps=1e-2,
             base_kwargs=None, save_every=10, texttype="Black", run_id=1, norm="linf",
-            device="cuda", extent=15, n_restarts=1, checkpoint_frac=0.2,
+            device="cuda", extent=15, n_restarts=2, checkpoint_frac=0.2,
             alpha_min_factor=0.1):
-    """Run PGD, optimising the texture to flip hit->miss. Saves snapshots + loss."""
+    """Optimise the texture to flip hit->miss, from `n_restarts` random starts.
+
+    The step halves and rewinds to the best iterate every
+    `checkpoint_frac * steps` steps. Writes per-restart snapshots, plus
+    best_texture.pt (highest-flip restart), loss_history.pt and best.json.
+    """
     out_dir = build_out_dir("PGD", texttype, network_id, norm, eps, run_id)
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
     save_json(base_kwargs, out_dir / "config.json")
@@ -51,9 +58,11 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
     save_texture_gray(x0, out_dir / "snapshots" / "step_0000_gray.png")
     with torch.no_grad():
         correct = loss_of(x0)[0] > 0
-    loss_history, best_x, best_loss = [], None, -float("inf")
+    loss_history, best_x, best_flip, best_restart = [], None, -float("inf"), None
 
     for restart in range(n_restarts):
+        snap_dir = out_dir / "snapshots" / f"restart_{restart:02d}"
+        snap_dir.mkdir(parents=True, exist_ok=True)
         x = _random_start(x0, eps, norm).detach().requires_grad_(True)
         alpha, alpha_min = lr, lr * alpha_min_factor
         ckpt_int = max(1, int(steps * checkpoint_frac))
@@ -91,13 +100,18 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
             x = x.detach()
 
             if step % save_every == 0 or step == 1:
-                save_texture_gray(x, out_dir / "snapshots" / f"step_{step:04d}_gray.png")
-                torch.save(x.cpu(), out_dir / "snapshots" / f"step_{step:04d}.pt")
+                save_texture_gray(x, snap_dir / f"step_{step:04d}_gray.png")
+                torch.save(x.cpu(), snap_dir / f"step_{step:04d}.pt")
 
-        if best_ckpt_loss > best_loss:
-            best_loss, best_x = best_ckpt_loss, best_ckpt_x.clone()
+        torch.save(x.cpu(), snap_dir / "final.pt")
+        flip = loss_history[-1]["avg_flip_correct_initially"]
+        if flip > best_flip:
+            best_flip, best_restart, best_x = flip, restart, x.clone()
 
     torch.save(best_x.cpu(), out_dir / "best_texture.pt")
     save_texture_gray(best_x, out_dir / "best_texture_gray.png")
     torch.save(loss_history, out_dir / "loss_history.pt")
+    save_json({"restart": best_restart, "label_flip": best_flip,
+               "network_id": network_id, "norm": norm, "eps": eps},
+              out_dir / "best.json")
     return out_dir

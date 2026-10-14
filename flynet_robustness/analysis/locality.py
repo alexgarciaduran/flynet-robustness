@@ -1,4 +1,6 @@
-"""Structural (edge) and functional (perturbation) locality metrics."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 

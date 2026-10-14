@@ -1,14 +1,5 @@
-"""Set up the flyvis networks.
-
-    python scripts/download_assets.py [0003.tar.gz ctrnn_edge_matched.zip flow_0301_best10.zip]
-
-1. downloads the flyvis pretrained ensemble (flow/0000);
-2. unpacks the given network archives into the flyvis results folder
-   (CTRNN flow/0003, sCTRNN flow/0215_pruned_current_ft_compact, degree-matched flow/0301_best10);
-3. synthesizes FlyNet (flow/0000/synthesized_t4d): the best flow/0000 model with the
-   T4d parameters (input synapse strengths, bias, time constant) of the 2nd best, which
-   has the correct T4d ON contrast preference.
-CNN/RAFT checkpoints and decoders are placed manually (checkpoints/README.md, decoders/README.md).
+"""
+@author: alexgarciaduran
 """
 
 import copy
@@ -27,7 +18,11 @@ def install_archive(path):
 
 
 def synthesize_flynet():
-    """Save flow/0000/synthesized_t4d (FlyNet)."""
+    """Save FlyNet as flow/0000/synthesized_t4d.
+
+    The best ensemble model, with the T4d parameters of the second best, which
+    has the correct T4d contrast preference.
+    """
     import h5py
     import numpy as np
     import torch

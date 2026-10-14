@@ -1,4 +1,6 @@
-"""Carlini-Wagner attack on the object texture."""
+"""
+@author: alexgarciaduran
+"""
 
 import torch
 from tqdm import tqdm

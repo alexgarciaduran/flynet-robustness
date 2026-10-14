@@ -1,7 +1,5 @@
-"""Differentiable 3D looming-stimulus pipeline (PyTorch3D).
-
-Builds textured primitives, renders a linear looming trajectory batched over
-time, and converts frames to luminance downsampled to model input size.
+"""
+@author: alexgarciaduran
 """
 
 import os
@@ -158,7 +156,9 @@ def build_stimulus(shape, rotation, texture, device="cpu"):
 
     axis = torch.tensor([[0.0, 0.0, 1.0]] if shape in _MESH2D else [[0.0, 1.0, 0.0]],
                         dtype=torch.float32, device=device)
-    R = axis_angle_to_matrix(axis * torch.tensor([rotation], device=device))[0]
+    # float32: saved configs store rotations as float64, which promotes R.
+    angle = torch.tensor([float(rotation)], dtype=torch.float32, device=device)
+    R = axis_angle_to_matrix(axis * angle)[0]
     verts = verts @ R.T
 
     if needs_tile_u:

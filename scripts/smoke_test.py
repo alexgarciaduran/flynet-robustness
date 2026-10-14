@@ -1,7 +1,5 @@
-"""Smoke test for dependency-light parts of the package.
-
-Runs without flyvis / PyTorch3D / RAFT. Exercises the registry, textures,
-metrics, perturbation ops, plotting, training and neural analyses.
+"""
+@author: alexgarciaduran
 """
 
 import os
@@ -25,14 +23,59 @@ from flynet_robustness.perturbations import (
 from flynet_robustness.training import train_hit_decoder, train_position_decoder
 
 
-def main():
-    # registry
+def check_registry():
+    """Every benchmarked network resolves, and its cost matches the reference table."""
     assert C.n_frames("vCNN_5_frames") == 5 and C.n_frames("vCNN_10_frames") == 10
     assert C.raft_iters("RAFT_6") == 6 and not C.is_cnn("FlyNet")
     assert C.n_frames("0") == 2 and C.label("raft_large") == "RAFT-12"  # legacy ids
     assert C.kind("RAFT_12_S") == "raft_hex" and C.input_dim("RAFT_6_S") == 721
     assert C.label("raft_hexsintel_large") == "RAFT-12-S"
     assert C.flyvis_id("sCTRNN").startswith("flow/0215") and C.flyvis_id("flynet_degree_matched_3") == "flow/0301_best10/003"
+    assert C.canonical("raft_hexsintel_large") == "RAFT_12_S" and C.canonical("FlyNet") == "FlyNet"
+    assert len(C.PAPER_NETWORKS) == 14
+    assert C.resolve_networks(["all"]) == C.PAPER_NETWORKS
+    assert C.resolve_networks(["0", "raft_large"]) == ["vCNN_2_frames", "RAFT_12"]
+    for nid in C.PAPER_NETWORKS:
+        assert C.spec(nid) and C.flops(nid) > 0 and C.color(nid) and C.input_dim(nid) > 0
+    # folder names the original scripts wrote result trees under
+    assert C.legacy_dir_name("FlyNet") == "flynet_synthesized"
+    assert C.legacy_dir_name("RAFT_12_S") == "cnn_raft_hexsintel_large"
+    assert C.legacy_dir_name("vCNN_5_frames") == "cnn_5_frames"
+
+    # the shipped reference table must line up with the registry
+    import csv
+    ref_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "data", "reference_results")
+    files = [f for f in os.listdir(ref_dir) if f.endswith(".csv")]
+    assert len(files) == 10, files
+    for fname in files:
+        with open(os.path.join(ref_dir, fname), encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert [r["network"] for r in rows] == C.PAPER_NETWORKS, fname
+        for r in rows:
+            assert int(r["flops"]) == C.flops(r["network"]), (fname, r["network"])
+            assert abs(fr.lers(float(r["R"]), r["network"]) - float(r["LERS"])) < 1e-9, \
+                (fname, r["network"])
+
+
+def check_transfer():
+    """Transfer bookkeeping: NaN diagonal in, sensible matrices out."""
+    from flynet_robustness.metrics import transfer_auc_matrix, transfer_target_accuracy
+    eps = [100, 250, 500]
+    rng = np.random.default_rng(0)
+    acc = rng.uniform(0.2, 1.0, size=(3, 3, 3, 4))
+    acc[np.arange(3), np.arange(3)] = np.nan
+    per_target = transfer_target_accuracy(acc)
+    assert per_target.shape == (3, 3) and np.isfinite(per_target).all()
+    m = transfer_auc_matrix(acc, eps)
+    assert m.shape == (3, 3) and np.isnan(np.diag(m)).all()
+    assert np.isfinite(m[~np.eye(3, dtype=bool)]).all()
+    assert np.allclose(transfer_auc_matrix(acc, eps, eps_index=1)[0, 1], acc[0, 1, 1].mean())
+
+
+def main():
+    check_registry()
+    check_transfer()
 
     for t in fr.TEXTURE_TYPES:
         assert fr.get_texture(t, 32).shape == (1, 32, 32, 1)

@@ -1,9 +1,5 @@
-"""Evaluate networks under video perturbations as an attack (paper protocol).
-
-Accuracy = 1 - fraction of the initially-correct (hit) frames flipped, averaged
-over noise draws; robustness R = area under accuracy vs magnitude. Magnitudes
-are in FlyNet units: AWN-frames sigma and shot-noise photon counts are matched
-to the network input size N (sigma * sqrt(721/N), c * N/721).
+"""
+@author: alexgarciaduran
 """
 
 import numpy as np
@@ -14,12 +10,16 @@ from .config import DEFAULT_STIMULUS
 from .decoders import to_logits
 from .feature_extraction import extract_features
 from .hex_eye import BoxEye
-from .metrics import lers, robustness
+from .metrics import bootstrap_robustness, lers, robustness
 from .models import forward_flynet
 from .perturbations import texture_to_input_perturbed
 from .textures import get_texture
 
-# name -> (texture_to_input_perturbed mode, magnitude kwarg, identity magnitude, paper magnitudes)
+# Trajectories averaged over; fog is deterministic, so it gets more.
+N_TRAJECTORIES = {"Fog": 20}
+DEFAULT_N_TRAJECTORIES = 10
+
+# name -> (mode, magnitude kwarg, identity magnitude, magnitudes)
 PERTURBATIONS = {
     "AWN_texture": ("awn_texture", "sigma", 0, (0, 0.1, 0.2, 0.4, 0.6, 0.8)),
     "AWN_frames": ("awn", "sigma", 0, (0, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 5e-2)),
@@ -43,11 +43,10 @@ def _logits(inp, net, decoder, network_id):
 def evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes=None,
                           texttype="Black", base_kwargs=None, device="cuda", extent=15,
                           n_trials=10, seed=0):
-    """Accuracy vs magnitude and robustness R for one perturbation on one trajectory.
+    """Accuracy vs magnitude and R, for one perturbation on one trajectory.
 
-    magnitudes default to the paper's sweep. Noise draw t uses torch seed `seed + t`,
-    so all networks see the same noise; fog is deterministic (one draw).
-    Returns dict with magnitudes, accuracy, robustness, lers.
+    Noise draw t uses torch seed `seed + t`, so all networks see the same
+    noise; fog is deterministic and gets one draw.
     """
     mode, param, identity, default = PERTURBATIONS[perturbation]
     magnitudes = np.asarray(default if magnitudes is None else magnitudes, dtype=float)
@@ -72,3 +71,24 @@ def evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes=Non
                         for m in magnitudes])
     R = robustness(magnitudes, acc)
     return {"magnitudes": magnitudes, "accuracy": acc, "robustness": R, "lers": lers(R, network_id)}
+
+
+def sweep_perturbation(net, decoder, network_id, perturbation, trajectories,
+                       magnitudes=None, n_trajectories=None, device="cuda", seed=0, **kwargs):
+    """Run one perturbation over several trajectories and bootstrap R.
+
+    `trajectories`: dicts of radius/theta/z0. Trajectory i seeds its noise with
+    `seed + 1000 * i`: different per trajectory, identical across networks.
+    """
+    n = n_trajectories or N_TRAJECTORIES.get(perturbation, DEFAULT_N_TRAJECTORIES)
+    magnitudes = np.asarray(PERTURBATIONS[perturbation][3] if magnitudes is None else magnitudes,
+                            dtype=float)
+    acc = np.stack([
+        evaluate_perturbation(net, decoder, network_id, perturbation, magnitudes=magnitudes,
+                              base_kwargs=dict(DEFAULT_STIMULUS, **t, device=device),
+                              device=device, seed=seed + 1000 * i, **kwargs)["accuracy"]
+        for i, t in enumerate(trajectories[:n])], axis=1)
+    R, R_std = bootstrap_robustness(magnitudes, acc)
+    return {"magnitudes": magnitudes, "accuracy": acc, "robustness": R, "robustness_std": R_std,
+            "lers": lers(R, network_id), "lers_std": lers(R_std, network_id),
+            "n_trajectories": acc.shape[1]}

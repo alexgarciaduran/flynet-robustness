@@ -1,4 +1,6 @@
-"""FlyNet / CTRNN loading and forward passes (flyvis)."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 import torch
@@ -26,14 +28,35 @@ def _motion_indices(connectome, cell_types=MOTION_CELL_TYPES):
 def get_flynet(network_id="FlyNet", device="cuda"):
     """Load a flyvis network and its decoded T4/T5 indices.
 
-    ids: 'FlyNet', 'CTRNN', 'sCTRNN', 'flynet_degree_matched_{0..9}'.
-    Returns (model1, model2, idxs1, idxs2); model2/idxs2 are None (kept for a
-    uniform interface with the two-model ensemble).
+    Returns (model1, model2, idxs1, idxs2); model2/idxs2 are None, kept for a
+    uniform interface with the two-model ensemble.
     """
     ckpt = {"validation_subdir": "validation", "loss_file_name": "loss"}
     model1 = NetworkView(config.flyvis_id(network_id),
                          best_checkpoint_fn_kwargs=ckpt).init_network().to(device)
     return model1, None, _motion_indices(model1.connectome), None
+
+
+def load_network(network_id="FlyNet", device="cuda", decoder=True):
+    """(net, decoder) for any registry id.
+
+    `net` is (model1, idxs1, model2, idxs2) for flyvis networks, a
+    feature-extractor module for CNN/RAFT. decoder=False skips the readout.
+    """
+    from .decoders import load_decoder
+    from .feature_extraction import load_cnn_network
+
+    if config.is_cnn(network_id):
+        net = load_cnn_network(network_id, device=device)
+    else:
+        model1, model2, idxs1, idxs2 = get_flynet(network_id, device=device)
+        net = (model1, idxs1, model2, idxs2)
+    return net, (load_decoder(network_id, device=device) if decoder else None)
+
+
+def load_networks(network_ids, device="cuda"):
+    """``{id: (net, decoder)}``, all kept resident on `device`."""
+    return {nid: load_network(nid, device=device) for nid in network_ids}
 
 
 def forward_flynet(stimulus, model1, idxs1, model2=None, idxs2=None, fps=100, dt=0.01):

@@ -1,9 +1,5 @@
-"""Train task decoders on frozen network activity.
-
-Hit/miss decoder: per-trial train/test split, an sklearn classifier
-(logistic regression / SVM / MLP), and time-binned test accuracy.
-Position/velocity decoders: torch MLP regressors with early stopping.
-Decoders are written to the readable ``decoders/<network_id>/`` layout.
+"""
+@author: alexgarciaduran
 """
 
 import os

@@ -1,9 +1,5 @@
-"""FlyNet robustness & efficiency benchmark.
-
-Lightweight utilities (config, metrics, textures, perturbation ops) import
-directly. Modules needing flyvis / PyTorch3D / RAFT (`rendering`, `models`,
-`cnn`, `feature_extraction`, `attacks`, `dataset`) are imported explicitly,
-e.g. ``from flynet_robustness.models import get_flynet``.
+"""
+@author: alexgarciaduran
 """
 
 __version__ = "0.2.0"

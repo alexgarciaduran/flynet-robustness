@@ -1,6 +1,5 @@
-"""Cartesian-to-hexagonal transduction (BoxEye photoreceptor array).
-
-Adapted from flyvis to keep the pipeline self-contained.
+"""
+@author: alexgarciaduran
 """
 
 from typing import Iterator, Literal, Tuple

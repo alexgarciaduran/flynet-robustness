@@ -1,10 +1,5 @@
-"""Load CNN/RAFT baselines and extract decoder-input features.
-
-The vanilla CNN stacks ``n_frames`` consecutive frames as input channels;
-``n_frames`` (2/5/10), the checkpoint path and the state-dict key all come
-from the network registry, and the same ``n_frames`` is used in the forward.
-RAFT is imported lazily from an external checkout (see README). RAFT-S takes
-the same hex input as FlyNet, mapped to a 256x256 image as in its training.
+"""
+@author: alexgarciaduran
 """
 
 import torch
@@ -63,7 +58,7 @@ def load_cnn_network(network_id="RAFT_12", device="cuda"):
 
     state = torch.load(config.checkpoint_path(network_id), map_location="cpu",
                        weights_only=False)[s["state_key"]]
-    # The gCNN checkpoint also stores the early_conv/late_conv aliases of `conv`.
+    # The gCNN checkpoint also carries early_conv/late_conv aliases of `conv`.
     expected = model.state_dict()
     missing = [k for k in expected if k not in state]
     if missing:

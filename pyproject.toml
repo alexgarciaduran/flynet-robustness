@@ -18,6 +18,7 @@ dependencies = [
     "imageio",
     "tqdm",
     "pandas",
+    "h5py",
 ]
 
 [project.optional-dependencies]

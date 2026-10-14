@@ -1,4 +1,6 @@
-"""Task decoders: hit/miss classifier (MLP) and position/velocity regressors."""
+"""
+@author: alexgarciaduran
+"""
 
 import pickle
 

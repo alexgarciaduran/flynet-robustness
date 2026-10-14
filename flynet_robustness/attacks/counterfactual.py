@@ -1,8 +1,5 @@
-"""Counterfactual restoration (paper Eqs. 2-3).
-
-Stage 1: optimise a texture to suppress p(hit), anchored to the base texture.
-Stage 2: find the nearest texture that recovers correct classification,
-anchored to the illusion texture.
+"""
+@author: alexgarciaduran
 """
 
 import os

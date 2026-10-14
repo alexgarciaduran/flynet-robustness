@@ -1,4 +1,6 @@
-"""Single-channel object textures used for looming stimuli."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 import torch

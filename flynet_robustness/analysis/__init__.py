@@ -1,4 +1,6 @@
-"""Neural analyses: recurrence, locality, representational similarity, decoding, illusion."""
+"""
+@author: alexgarciaduran
+"""
 
 from . import decoding, illusion, locality, recurrence, representational
 

@@ -1,4 +1,6 @@
-"""Texture optimization of the input's radial 2-point (Hassenstein-Reichardt) correlation."""
+"""
+@author: alexgarciaduran
+"""
 
 import os
 

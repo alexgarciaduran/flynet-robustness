@@ -1,4 +1,6 @@
-"""Plotting helpers for the main figures (accuracy, robustness, LERS, decoding)."""
+"""
+@author: alexgarciaduran
+"""
 
 import numpy as np
 import torch
@@ -62,11 +64,14 @@ def plot_lers_bars(lers_by_network, ax=None, sort=True):
     return fig, ax
 
 
-def plot_transfer_matrix(matrix, network_ids, ax=None, cmap="Greens"):
-    """AUC transfer matrix (rows: source, cols: target)."""
+def plot_transfer_matrix(matrix, network_ids, ax=None, cmap="Greens", vmin=None, vmax=None):
+    """Transfer matrix (rows: source, cols: target). Scale spans the data."""
     import matplotlib.pyplot as plt
     fig, ax = _ax(ax, figsize=(4, 3.5))
-    im = ax.imshow(matrix, cmap=cmap, vmin=0.5, vmax=1.0)
+    matrix = np.asarray(matrix, dtype=float)
+    vmin = np.nanmin(matrix) if vmin is None else vmin
+    vmax = np.nanmax(matrix) if vmax is None else vmax
+    im = ax.imshow(matrix, cmap=cmap, vmin=vmin, vmax=vmax)
     labels = [config.label(i) for i in network_ids]
     ax.set_xticks(range(len(labels)), labels, rotation=90, fontsize=7)
     ax.set_yticks(range(len(labels)), labels, fontsize=7)

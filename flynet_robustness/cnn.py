@@ -1,4 +1,6 @@
-"""Hexagonal CNN optical-flow baselines (vCNN, gCNN) and feature extractors."""
+"""
+@author: alexgarciaduran
+"""
 
 import flyvis
 import torch

@@ -1,13 +1,5 @@
-"""Illusion mechanism: radial 2-point correlation and closeness to reverse-phi.
-
-2-point (Hassenstein-Reichardt) correlation between each hex column and its
-most outward neighbour at delay D, on contrast relative to each frame's
-spatial mean (positive = outward / looming motion).
-
-Condition simulations (``dataset.save_condition_simulations``)::
-
-    sims/{cond}/Sphere/simulation_{n}_{tex}_responses_t4t5_Sphere_{cond}.npy   (T, 5768)
-    sims/{cond}/Sphere/stimulus/input_stimulus_{n}_{tex}__Sphere_{cond}.npy     (T, 721)
+"""
+@author: alexgarciaduran
 """
 
 import glob

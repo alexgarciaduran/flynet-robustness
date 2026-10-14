@@ -7,6 +7,7 @@ matplotlib
 seaborn
 imageio
 tqdm
+h5py        # scripts/download_assets.py (flyvis validation files)
 
 # Deep learning (install a build matching your CUDA/CPU setup)
 torch
