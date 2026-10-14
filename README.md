@@ -11,7 +11,9 @@ pip install -e .
 
 Plus, separately: [`pytorch3d`](https://github.com/facebookresearch/pytorch3d)
 (Linux only), [`flyvis`](https://github.com/TuragaLab/flyvis), and a
-[RAFT](https://github.com/princeton-vl/RAFT) checkout on `PYTHONPATH`.
+[RAFT](https://github.com/princeton-vl/RAFT) checkout on `PYTHONPATH` (only
+`core.raft` is needed; the hex-Sintel preprocessing is vendored in
+`flynet_robustness/raft_hex.py`).
 
 Check the parts that need none of those:
 

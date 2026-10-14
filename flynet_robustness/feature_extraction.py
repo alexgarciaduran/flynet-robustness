@@ -3,7 +3,6 @@
 """
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 from torch.utils.checkpoint import checkpoint
 
@@ -11,10 +10,10 @@ from . import config
 from .cnn import (
     FeatureExtractor,
     FeatureExtractorGlobalInformation,
-    RegularHexToCartesianMap,
     VanillaHexCNNBaseline,
     VanillaHexCNNBaselineGlobalInformation,
 )
+from .raft_hex import hex_to_raft_input
 
 _CNN_SHAPE = [32, 92, 136, 8, 2]
 _CNN_KERNELS = [1, 5, 5, 5, 5]
@@ -80,8 +79,7 @@ def _raft_forward(model, a1, a2, n_iters):
 
 def raft_hex_frames(hex_frames, size=256, extent=15):
     """RAFT-S input: hex frames (1, T, 1, 721) in [0, 1] -> (T, 3, size, size) in [0, 255]."""
-    cart = F.pad(RegularHexToCartesianMap(extent)(hex_frames.permute(1, 0, 2, 3)), (0, 1, 0, 1))
-    return 255 * F.interpolate(cart, size=(size, size), mode="bilinear", align_corners=False).repeat(1, 3, 1, 1)
+    return hex_to_raft_input(hex_frames, output_size=size, extent=extent)
 
 
 def extract_features(model, hex_frames, network_id="RAFTsmall"):
