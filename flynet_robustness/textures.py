@@ -38,6 +38,6 @@ def get_texture(texture_type: str, size: int = 128) -> torch.Tensor:
     if texture_type == "Wavy":
         return make_tri_checkerboard(size, num_tri=4).clamp(0, 1)
     if texture_type == "Random":
-        offset = 0.2 + 0.6 * torch.rand(1) - 0.5
-        return torch.clamp(torch.rand(1, size, size, 1) + offset, 0.0, 1.0)
+        base = torch.rand(1, size, size, 1)          # drawn before the offset
+        return torch.clamp(base + (0.2 + 0.6 * torch.rand(1) - 0.5), 0.0, 1.0)
     raise ValueError(f"Unknown texture_type: {texture_type}")
