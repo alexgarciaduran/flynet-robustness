@@ -8,7 +8,7 @@ import torch
 from . import config
 from .config import DEFAULT_STIMULUS
 from .decoders import to_logits
-from .feature_extraction import extract_features
+from .feature_extraction import amp_dtype, extract_features
 from .hex_eye import BoxEye
 from .metrics import bootstrap_robustness, lers, robustness
 from .models import forward_flynet
@@ -34,6 +34,10 @@ def _logits(inp, net, decoder, network_id):
     if not config.is_cnn(network_id):
         model1, idxs1, model2, idxs2 = net
         activity = forward_flynet(inp, model1, idxs1, model2, idxs2).flatten(end_dim=1)
+    elif config.kind(network_id) in ("raft", "raft_hex"):
+        with torch.amp.autocast("cuda", dtype=amp_dtype()):   # RAFT runs in AMP, as in the attacks
+            _, activity, _ = extract_features(net, inp, network_id=network_id)
+        activity = activity.view(activity.shape[0], -1)
     else:
         _, activity, _ = extract_features(net, inp, network_id=network_id)
         activity = activity.view(activity.shape[0], -1)
