@@ -34,12 +34,14 @@ def _project(x, x0, eps, norm):
 def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, eps=1e-2,
             base_kwargs=None, save_every=10, texttype="Black", run_id=1, norm="linf",
             device="cuda", extent=15, n_restarts=2, checkpoint_frac=0.2,
-            alpha_min_factor=0.1):
+            alpha_min_factor=0.1, patience=50, rel_thresh=1e-3):
     """Optimise the texture to flip hit->miss, from `n_restarts` random starts.
 
     The step halves and rewinds to the best iterate every
-    `checkpoint_frac * steps` steps. Writes per-restart snapshots, plus
-    best_texture.pt (highest-flip restart), loss_history.pt and best.json.
+    `checkpoint_frac * steps` steps, and the restart stops once the loss has
+    moved by less than `rel_thresh` over `patience` entries (patience=None
+    disables it). Writes per-restart snapshots, plus best_texture.pt
+    (highest-flip restart), loss_history.pt and best.json.
     """
     out_dir = build_out_dir("PGD", texttype, network_id, norm, eps, run_id)
     base_kwargs = base_kwargs or dict(DEFAULT_STIMULUS, device=device)
@@ -88,7 +90,9 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
                 if loss.item() > best_ckpt_loss:
                     best_ckpt_loss, best_ckpt_x = loss.item(), x.clone()
                 if step % ckpt_int == 0:
-                    _, loss_true, _ = loss_of(x)
+                    # re-read at the updated x, so the logged flip rate is the
+                    # one of the iterate this step actually reached
+                    logits, loss_true, _ = loss_of(x)
                     if loss_true.item() <= best_ckpt_loss:
                         alpha = max(alpha * 0.5, alpha_min)
                         x = best_ckpt_x.clone()
@@ -102,6 +106,11 @@ def run_pgd(net, decoder, network_id="FlyNet", steps=100, lr=1e-2, tex_res=128, 
             if step % save_every == 0 or step == 1:
                 save_texture_gray(x, snap_dir / f"step_{step:04d}_gray.png")
                 torch.save(x.cpu(), snap_dir / f"step_{step:04d}.pt")
+
+            if patience and step > 50 and len(loss_history) > patience:
+                prev = loss_history[-patience - 1]["loss"]
+                if abs(loss.item() - prev) / max(prev, 1e-6) < rel_thresh:
+                    break
 
         torch.save(x.cpu(), snap_dir / "final.pt")
         flip = loss_history[-1]["avg_flip_correct_initially"]
