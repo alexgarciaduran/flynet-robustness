@@ -16,7 +16,7 @@ from . import config
 from .decoders import PositionDecoder
 
 
-def _split_by_trial(activity_all, labels, test_size=0.05, seed=1):
+def _split_by_trial(activity_all, labels, test_size=0.1, seed=1):
     """Split trials into train/test, expanding each trial over its timepoints."""
     rng = np.random.default_rng(seed)
     n_trials = len(activity_all)
@@ -56,7 +56,7 @@ def _build_classifier(decoder, scale, C, max_iter, penalty):
 
 
 def train_hit_decoder(activity_all, hit_labels, times_duration, network_id="FlyNet",
-                      decoder="mlp", scale=True, test_size=0.05, C=0.1, max_iter=50,
+                      decoder="mlp", scale=True, test_size=0.1, C=0.1, max_iter=50,
                       penalty="l2", save=True, n_bins=20, dt=0.01):
     """Train and save the hit/miss decoder; return time-binned test accuracy."""
     Xtr, ytr, Xte, yte, idx_te = _split_by_trial(activity_all, hit_labels, test_size)
