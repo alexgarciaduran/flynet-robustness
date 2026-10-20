@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 from .. import config
-from ..feature_extraction import extract_features
+from ..feature_extraction import amp_dtype, extract_features
 from ..models import forward_flynet
 from ..perturbations import texture_to_hex_batch
 
@@ -101,9 +101,3 @@ def _jsonable(o):
 def save_json(obj, path):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2, default=_jsonable)
-
-
-def amp_dtype():
-    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
-        return torch.bfloat16
-    return torch.float16
