@@ -12,8 +12,10 @@ from scipy.sparse.csgraph import connected_components, dijkstra
 def weight_matrix_from_network(network, signed=True, sparse=True):
     """Weight matrix W[i,j] from a flyvis connectome.
 
-    Sparse by default: dense would be ~8 GB for 45,669 neurons. Every function
-    here takes either form.
+    signed=True uses sign * syn_count * syn_strength (FlyNet); the
+    unconstrained CTRNN has no connectomic counts, so it takes signed=False
+    (the learned edge weight). Sparse by default: dense would be ~8 GB for
+    45,669 neurons, and every function here takes either form.
     """
     params = network._param_api()
     nodes = network.connectome.nodes.to_df()
