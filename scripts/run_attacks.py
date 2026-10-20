@@ -7,14 +7,18 @@ import json
 import os
 import sys
 
+import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 PGD_EPS = {"l2": [100, 250, 500, 1000, 2000], "linf": [1, 6, 8, 10, 15]}
+# The original driver swept the eps lists in reverse and seeded each PGD run
+# with i_eps * 19 + trajectory + 1; paired l2/linf values share a seed.
+PGD_SEED_INDEX = {n: {e: k for k, e in enumerate(v[::-1])} for n, v in PGD_EPS.items()}
 CW_C = [1, 10, 1e2, 1e3, 1e4, 1e5]
 NES_SIGMA = [1, 3, 6, 9, 12]
-TRAJECTORIES = {"pgd": 15, "cw": 10, "nes": 15}
+TRAJECTORIES = {"pgd": 15, "cw": 10, "nes": 10}
 
 
 def main(argv=None):
@@ -61,10 +65,12 @@ def main(argv=None):
         net, decoder = load_network(network_id, device=args.device)
         for offset, base_kwargs in enumerate(stim):
             i = start + offset
-            torch.manual_seed(2 * (i + 1))
+            seed = 2 * (i + 1)          # reseeded per condition, as in the original runs
             if args.attack == "pgd":
                 for norm in norms:
                     for eps in PGD_EPS[norm]:
+                        pgd_seed = PGD_SEED_INDEX[norm][eps] * 19 + i + 1
+                        np.random.seed(pgd_seed); torch.manual_seed(pgd_seed)
                         run_pgd(net, decoder, network_id, norm=norm, eps=eps, lr=eps / 10,
                                 steps=args.steps or 100, n_restarts=args.restarts,
                                 base_kwargs=base_kwargs, texttype=args.texture,
@@ -72,11 +78,13 @@ def main(argv=None):
             elif args.attack == "cw":
                 for c in CW_C:
                     for norm in norms:
+                        np.random.seed(seed); torch.manual_seed(seed)
                         run_cw(net, decoder, network_id, norm=norm, c=c,
                                steps=args.steps or 150, lr=0.1, base_kwargs=base_kwargs,
                                texttype=args.texture, run_id=i + 1, device=args.device)
             else:
                 for sigma in NES_SIGMA:
+                    np.random.seed(seed); torch.manual_seed(seed)
                     run_nes(net, decoder, network_id, sigma=sigma, steps=args.steps or 100,
                             n_samples=15, lr=1.0, base_kwargs=base_kwargs,
                             texttype=args.texture, run_id=i + 1, device=args.device)
