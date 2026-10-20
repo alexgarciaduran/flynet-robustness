@@ -15,6 +15,13 @@ from .cnn import (
 )
 from .raft_hex import hex_to_raft_input
 
+def amp_dtype():
+    """AMP dtype used for the RAFT forwards."""
+    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+        return torch.bfloat16
+    return torch.float16
+
+
 _CNN_SHAPE = [32, 92, 136, 8, 2]
 _CNN_KERNELS = [1, 5, 5, 5, 5]
 
