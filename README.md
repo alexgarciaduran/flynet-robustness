@@ -23,13 +23,28 @@ python scripts/smoke_test.py
 
 ## Assets
 
+Decoders and the CNN / RAFT-HexSintel checkpoints:
+
+```bash
+python scripts/download_assets.py --weights          # ~560 MB, skips what you have
+```
+
+from [huggingface.co/alejandrorg00/flynet-robustness](https://huggingface.co/alejandrorg00/flynet-robustness).
+Two sets are not there:
+
+- **vanilla RAFT** (`RAFTsmall`, `RAFT_1/6/12`) — `models.zip` from the RAFT
+  authors; put `raft-small.pth` and `raft-sintel.pth` in `models/`
+- **CTRNN and sCTRNN** — flyvis archives, supplied separately
+
+Then the flyvis networks, which also synthesises FlyNet:
+
 ```bash
 python scripts/download_assets.py 0003.tar.gz ctrnn_edge_matched.zip
 ```
 
-CNN weights go in `checkpoints/`, RAFT weights in `models/`, trained decoders in
-`decoders/` — see the READMEs in those folders. Override the locations with
-`$FLYNET_CHECKPOINTS`, `$FLYNET_RAFT_MODELS`, `$FLYNET_DECODERS`.
+sCTRNN needs a flyvis build with `ConnectomeWithPrunedEdges`.
+`$FLYNET_CHECKPOINTS`, `$FLYNET_RAFT_MODELS` and `$FLYNET_DECODERS` override
+where these land; set them before importing `flynet_robustness`.
 
 ## Networks
 
