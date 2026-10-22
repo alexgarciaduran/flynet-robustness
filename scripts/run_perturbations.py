@@ -46,7 +46,7 @@ def main(argv=None):
         for name, table in rows.items():
             path = os.path.join(out_dir, f"results_Environmental_{name}.csv")
             with open(path, "w", newline="", encoding="utf-8") as f:
-                w = csv.DictWriter(f, fieldnames=["network", "aucs", "aucs_std", "lers", "flops"])
+                w = csv.DictWriter(f, fieldnames=["network", "R", "R_std", "LERS", "flops"])
                 w.writeheader()
                 w.writerows(table)
         np.savez(os.path.join(out_dir, "accuracy_curves.npz"), **curves)
@@ -58,8 +58,8 @@ def main(argv=None):
             r = sweep_perturbation(net, decoder, network_id, name, trajectories,
                                    n_trajectories=args.trajectories, device=args.device,
                                    n_trials=args.n_trials)
-            rows[name].append({"network": network_id, "aucs": r["robustness"],
-                               "aucs_std": r["robustness_std"], "lers": r["lers"],
+            rows[name].append({"network": network_id, "R": r["robustness"],
+                               "R_std": r["robustness_std"], "LERS": r["lers"],
                                "flops": config.flops(network_id)})
             curves[f"{name}/{network_id}"] = r["accuracy"]
             curves[f"{name}/magnitudes"] = r["magnitudes"]

@@ -60,13 +60,13 @@ def main(argv=None):
                 print(f"  {target}: no PGD textures found, skipped")
                 continue
             R, R_std = bootstrap_robustness(eps_list, per_source)
-            rows.append({"network": target, "aucs": R, "aucs_std": R_std,
-                         "lers": lers(R, target), "flops": config.flops(target)})
+            rows.append({"network": target, "R": R, "R_std": R_std,
+                         "LERS": lers(R, target), "flops": config.flops(target)})
             print(f"  {target:18s} transfer R = {R:.3f} +/- {R_std:.3f}", flush=True)
 
         path = os.path.join(out_dir, f"results_Transfer_{norm}.csv")
         with open(path, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=["network", "aucs", "aucs_std", "lers", "flops"])
+            w = csv.DictWriter(f, fieldnames=["network", "R", "R_std", "LERS", "flops"])
             w.writeheader()
             w.writerows(rows)
         print("wrote", path)
