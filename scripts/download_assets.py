@@ -36,7 +36,6 @@ def _fetch(rel_path, dest, check_only=False):
     if os.path.exists(dest):
         print("have", dest)
         return dest
-    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     url = HF_BASE + rel_path
     if check_only:
         req = urllib.request.Request(url, method="HEAD")
@@ -44,6 +43,7 @@ def _fetch(rel_path, dest, check_only=False):
         print(f"{size:>10} {rel_path}  ->  {dest}")
         return dest
     print("get ", rel_path, "->", dest, flush=True)
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     urllib.request.urlretrieve(url, dest)
     return dest
 
@@ -117,7 +117,17 @@ def synthesize_flynet():
     print("Saved FlyNet to", out)
 
 
+USAGE = """usage: download_assets.py [--weights [--dry-run]] [archive ...]
+
+  --weights   decoders + CNN/RAFT-HexSintel checkpoints from HuggingFace
+  --dry-run   with --weights: list sources and destinations, download nothing
+  archive...  flyvis network archives to unpack, then synthesize FlyNet
+"""
+
 if __name__ == "__main__":
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(USAGE)
+        sys.exit()
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if "--weights" in sys.argv:                 # HuggingFace only, no flyvis needed
         download_weights(check_only="--dry-run" in sys.argv)

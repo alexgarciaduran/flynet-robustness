@@ -2,6 +2,9 @@
 @author: alexgarciaduran
 """
 
+import os
+import sys
+
 import torch
 from torch import nn
 from torch.utils.checkpoint import checkpoint
@@ -14,6 +17,14 @@ from .cnn import (
     VanillaHexCNNBaselineGlobalInformation,
 )
 from .raft_hex import hex_to_raft_input
+
+def _add_raft_core_to_path():
+    """RAFT/core/raft.py imports its siblings bare, so RAFT/core must be on sys.path."""
+    for p in list(sys.path):
+        core = os.path.join(p, "core")
+        if os.path.isfile(os.path.join(core, "raft.py")) and core not in sys.path:
+            sys.path.insert(0, core)
+
 
 def amp_dtype():
     """AMP dtype used for the RAFT forwards."""
@@ -32,6 +43,7 @@ def load_cnn_network(network_id="RAFT_12", device="cuda"):
     kind = s["kind"]
 
     if kind in ("raft", "raft_hex"):
+        _add_raft_core_to_path()
         from core.raft import RAFT  # external RAFT checkout on sys.path
 
         class Args:

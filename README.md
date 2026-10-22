@@ -13,7 +13,8 @@ Plus, separately: [`pytorch3d`](https://github.com/facebookresearch/pytorch3d)
 (Linux only), [`flyvis`](https://github.com/TuragaLab/flyvis), and a
 [RAFT](https://github.com/princeton-vl/RAFT) checkout on `PYTHONPATH` (only
 `core.raft` is needed; the hex-Sintel preprocessing is vendored in
-`flynet_robustness/raft_hex.py`).
+`flynet_robustness/raft_hex.py`). `RAFT/core` is added to `sys.path`
+automatically, since upstream `core/raft.py` imports its siblings bare.
 
 Check the parts that need none of those:
 
@@ -77,8 +78,9 @@ python scripts/run_perturbations.py --networks all --results results
 `--networks` also takes any subset of ids. Split a long job into blocks with
 `--start-trajectory`. `-h` lists the rest.
 
-The CSVs are `network,aucs,aucs_std,lers,flops`. `data/reference_results/` holds
-the same table from the published run, to check a rerun against.
+The CSVs are `network,R,R_std,LERS,flops`. `data/reference_results/` holds
+the same table from the published run, in the same columns, to check a
+rerun against.
 
 ## Notebooks
 
