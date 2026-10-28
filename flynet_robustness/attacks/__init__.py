@@ -1,5 +1,5 @@
 """
-@author: alexgarciaduran
+@author: alexgarciaduran and alejandrorg00
 """
 
 from .correlation import run_correlation_optimization

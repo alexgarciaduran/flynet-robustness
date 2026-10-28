@@ -1,5 +1,5 @@
 """
-@author: alexgarciaduran
+@author: alexgarciaduran and alejandrorg00
 """
 
 from typing import Iterator, Literal, Tuple

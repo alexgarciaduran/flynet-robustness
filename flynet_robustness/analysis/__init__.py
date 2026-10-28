@@ -1,5 +1,5 @@
 """
-@author: alexgarciaduran
+@author: alexgarciaduran and alejandrorg00
 """
 
 from . import decoding, illusion, locality, recurrence, representational

@@ -1,5 +1,5 @@
 """
-@author: alexgarciaduran
+@author: alexgarciaduran and alejandrorg00
 """
 
 __version__ = "0.2.0"
