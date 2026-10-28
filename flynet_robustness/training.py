@@ -68,10 +68,13 @@ def train_hit_decoder(activity_all, hit_labels, times_duration, network_id="FlyN
         with open(path, "wb") as f:
             pickle.dump(clf, f)
 
+    # Windowed nets give T - n_frames + 1 samples per trial, so idx_te must be
+    # split by the real lengths; sample j then ends on frame j + T - S.
+    lengths = np.array([(a[0] if a.ndim == 3 else a).shape[0] for a in activity_all])
     n_tp = np.round(np.asarray(times_duration) / dt).astype(int)
-    cumsum = np.cumsum(n_tp)
-    sim_idx = np.searchsorted(cumsum, idx_te, side="right")
-    rel_time = (idx_te - np.concatenate(([0], cumsum[:-1]))[sim_idx]) / n_tp[sim_idx]
+    starts = np.concatenate(([0], np.cumsum(lengths)[:-1]))
+    sim_idx = np.searchsorted(np.cumsum(lengths), idx_te, side="right")
+    rel_time = (idx_te - starts[sim_idx] + n_tp[sim_idx] - lengths[sim_idx]) / n_tp[sim_idx]
     bins = np.linspace(0, 1, n_bins + 1)
     acc = np.full(n_bins, np.nan)
     for i in range(n_bins):
