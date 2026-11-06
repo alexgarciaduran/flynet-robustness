@@ -72,8 +72,6 @@ RAFTsmall  RAFT_1  RAFT_6  RAFT_12
 RAFT_1_S  RAFT_6_S  RAFT_12_S
 ```
 
-Old ids (`raft_large`, `0`, `flynet_synthesized`, ...) still resolve.
-
 ## Run
 
 ```bash
