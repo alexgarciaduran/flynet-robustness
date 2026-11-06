@@ -1,7 +1,18 @@
 # flynet-robustness
 
-Robustness and efficiency of FlyNet and a set of optical-flow baselines on a
-looming collision-detection task.
+Code and trained networks for the NeurIPS 2026 paper **"Measuring Robustness and
+Efficiency in a Connectome-Constrained Fly Visual System Model: Linking an
+Adversarial and a Perceptual Illusion."**
+
+![Differentiable looming pipeline](docs/fig1.png)
+
+A looming object is rendered in 3D, sampled onto the fly's hexagonal
+photoreceptor lattice, run through a network and read out by an MLP decoder
+(**a**). Every step is differentiable, so the loss can be pushed all the way
+back to the texture and used to attack it. Objects approach on hit or near-miss
+trajectories and vary in shape and texture (**b**, **c**). This repository runs
+that pipeline for 14 networks and measures how each degrades under adversarial
+and environmental perturbations.
 
 ## Install
 
@@ -10,7 +21,10 @@ pip install -e .
 ```
 
 Plus, separately: [`pytorch3d`](https://github.com/facebookresearch/pytorch3d)
-(Linux only), [`flyvis`](https://github.com/TuragaLab/flyvis), and a
+(Linux only), [`flyvis`](https://github.com/lappalainenj/flyvis) — use the
+`neurips2026` release of that fork, which is **required for CTRNN and sCTRNN**
+(upstream [TuragaLab/flyvis](https://github.com/TuragaLab/flyvis) lacks the
+edge-matched and pruned connectomes) — and a
 [RAFT](https://github.com/princeton-vl/RAFT) checkout on `PYTHONPATH` (only
 `core.raft` is needed; the hex-Sintel preprocessing is vendored in
 `flynet_robustness/raft_hex.py`). `RAFT/core` is added to `sys.path`
@@ -43,7 +57,7 @@ Then the flyvis networks, which also synthesises FlyNet:
 python scripts/download_assets.py 0003.tar.gz ctrnn_edge_matched.zip
 ```
 
-sCTRNN needs a flyvis build with `ConnectomeWithPrunedEdges`.
+sCTRNN needs `ConnectomeWithPrunedEdges`, which the `neurips2026` fork provides.
 `$FLYNET_CHECKPOINTS`, `$FLYNET_RAFT_MODELS` and `$FLYNET_DECODERS` override
 where these land; set them before importing `flynet_robustness`.
 
@@ -96,6 +110,21 @@ rerun against.
 | `08_transfer_attacks` | transfer matrix across networks |
 
 Run them from the repository root.
+
+## Citation
+
+```bibtex
+@inproceedings{garciaduran2026flyillusions,
+  title     = {Measuring Robustness and Efficiency in a Connectome-Constrained Fly Visual System Model:
+               Linking an Adversarial and a Perceptual Illusion},
+  author    = {Garcia-Duran, Alexandre and Rodriguez-Garcia, Alejandro and
+               Molano-Mazón, Manuel and Hyafil, Alexandre and
+               Ramaswamy, Srikanth and Lappalainen, Janne K.},
+  booktitle = {The Fortieth Annual Conference on Neural Information Processing Systems},
+  year      = {2026},
+  url       = {TBA}
+}
+```
 
 ## License
 
